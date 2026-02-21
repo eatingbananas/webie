@@ -3,42 +3,18 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Your Name</title>
-
-  <!--
-  ═══════════════════════════════════════════════════
-  FONTS
-  We're loading Arial/Helvetica as the base (YouTube
-  used system fonts back then), plus Tahoma for nav.
-  No Google Fonts — this era used whatever was on
-  your computer.
-  ═══════════════════════════════════════════════════
-  -->
+  <title>helenyzh</title>
 
   <style>
 
-    /* ─────────────────────────────────────────────
-       CSS VARIABLES
-       Think of these like global settings. Change
-       one value here and it updates everywhere.
-    ───────────────────────────────────────────── */
     :root {
-      --blue:       #1a56a0;   /* classic hyperlink blue */
+      --blue:       #1a56a0;
       --blue-light: #2a6ac0;
-      --red:        #cc0000;   /* YouTube red */
-      --bg:         #f9f9f9;
-      --border:     #dddddd;
+      --border:     #a0b4c8;
       --gray-text:  #666666;
       --dark-text:  #1a1a1a;
-      --sidebar-w:  240px;
     }
 
-    /* ─────────────────────────────────────────────
-       RESET
-       Browsers have default styles (margins, padding)
-       that differ between Chrome/Firefox/Safari.
-       This zeroes everything out so we start clean.
-    ───────────────────────────────────────────── */
     *, *::before, *::after {
       box-sizing: border-box;
       margin: 0;
@@ -46,11 +22,21 @@
     }
 
     body {
-      font-family: Arial, Helvetica, sans-serif;
+      font-family: Tahoma, "MS Sans Serif", "Microsoft Sans Serif", Arial, sans-serif;
       font-size: 13px;
-      background: var(--bg);
       color: var(--dark-text);
       min-height: 100vh;
+      -webkit-font-smoothing: none;
+      -moz-osx-font-smoothing: unset;
+      font-smooth: never;
+      background-color: #b0b0b0;
+      background-image: repeating-linear-gradient(
+        90deg,
+        rgba(255,255,255,0.07) 0px,
+        rgba(255,255,255,0.07) 1px,
+        transparent 1px,
+        transparent 4px
+      );
     }
 
     a {
@@ -62,713 +48,672 @@
       color: var(--blue-light);
     }
 
-    /* ─────────────────────────────────────────────
-       HEADER / NAV BAR
-       position: sticky means it stays at the top
-       when you scroll. z-index keeps it above
-       other content.
-    ───────────────────────────────────────────── */
-    header {
+    /* ══════════════════════════════════════════
+       PAGE WRAPPER — white box floating on grey
+    ══════════════════════════════════════════ */
+    .page-wrapper {
+      max-width: 1080px;
+      margin: 14px auto;
       background: #fff;
-      border-bottom: 1px solid #c8c8c8;
+      border: 1px solid #c9c9c9;
+      box-shadow:
+        0 8px 32px rgba(0,0,0,0.45),
+        0 2px 8px rgba(0,0,0,0.3),
+        inset 0 1px 0 rgba(255,255,255,0.6);
+      overflow: hidden;
+    }
+
+    /* ══════════════════════════════════════════
+       HEADER
+    ══════════════════════════════════════════ */
+    header {
+      background:
+        linear-gradient(to bottom right,
+          rgba(255,255,255,0) 15%,
+          rgba(255,255,255,0) 20%,
+          rgba(255,255,255,0.85) 50%,
+          rgba(255,255,255,1) 100%
+        ),
+        url("web.jpeg");
+      background-size: cover;
+      background-position: top left;
+      border-bottom: 1px solid #c8d8e8;
       position: sticky;
       top: 0;
       z-index: 100;
-      /* box-shadow adds depth — subtle drop shadow */
-      box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.15);
     }
 
     .header-inner {
-      max-width: 1060px;
+      max-width: 1080px;
       margin: 0 auto;
-      padding: 0 12px;
-      height: 56px;
-      display: flex;          /* flexbox: items sit side by side */
-      align-items: center;    /* vertically centered */
-      gap: 14px;
+      padding: 0 16px;
+      height: 70px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
     }
 
     .logo {
-      font-size: 22px;
+      font-size: 30px;
       font-weight: bold;
-      color: var(--dark-text);
-      letter-spacing: -0.5px;
+      color: rgb(221,226,237);
+      letter-spacing: -1px;
       white-space: nowrap;
       text-decoration: none;
+      font-family: "Trebuchet MS", Arial, sans-serif;
     }
 
-    .logo span {
-      /* The "You" in YouTube had a red box */
-      background: var(--red);
-      color: #fff;
-      padding: 1px 5px;
-      border-radius: 3px;
-      margin-right: 1px;
-    }
-
-    /* ─────────────────────────────────────────────
-       SEARCH BAR
-       flex: 1 means "take up all remaining space"
-       in the flex row.
-    ───────────────────────────────────────────── */
     .search-bar {
       flex: 1;
       display: flex;
-      max-width: 420px;
+      max-width: 460px;
     }
 
     .search-bar input {
       flex: 1;
-      height: 28px;
-      border: 1px solid #aaa;
+      height: 30px;
+      border: 1px solid #aabccc;
       border-right: none;
-      padding: 0 8px;
-      font-size: 13px;
+      padding: 0 12px;
+      font-size: 12px;
+      font-family: Tahoma, sans-serif;
       outline: none;
-      /* inset shadow = that recessed text-field look */
+      background: #fff;
       box-shadow: inset 0 1px 3px rgba(0,0,0,0.15);
     }
 
-    .search-bar input:focus {
-      border-color: var(--blue);
-    }
+    .search-bar input:focus { border-color: #1a56a0; }
 
     .search-bar button {
-      height: 28px;
-      padding: 0 12px;
-      background: linear-gradient(to bottom, #f8f8f8, #e0e0e0);
-      border: 1px solid #aaa;
+      height: 30px;
+      width: 46px;
+      background: #f5a623;
+      border: 1px solid #d4880a;
       cursor: pointer;
-      font-size: 12px;
-      color: #333;
+      font-size: 14px;
+      color: #fff;
+      font-family: Tahoma, sans-serif;
     }
 
-    .search-bar button:hover {
-      background: linear-gradient(to bottom, #efefef, #d5d5d5);
-    }
+    .search-bar button:hover { background: #e09010; }
 
     .header-links {
       display: flex;
       gap: 16px;
       white-space: nowrap;
       font-size: 12px;
+      align-items: center;
     }
 
-    .header-links a { color: #444; }
+    .header-links a { color: #1a3a6a; }
+    .header-links a:hover { color: #2a6ac0; text-decoration: underline; }
 
     .btn-primary {
-      /* The "Create Account" blue button */
-      background: linear-gradient(to bottom, #4a90d9, #1a56a0);
-      color: #fff !important;
-      padding: 5px 14px;
-      border-radius: 3px;
-      border: 1px solid #1040a0;
+      color: #1a56a0 !important;
       font-size: 12px;
       font-weight: bold;
       text-decoration: none !important;
     }
 
     .btn-primary:hover {
-      background: linear-gradient(to bottom, #5aa0e9, #2a66b0);
+      color: #2a6ac0 !important;
+      text-decoration: underline !important;
     }
 
-    /* ─────────────────────────────────────────────
-       MAIN LAYOUT
-       display: flex puts sidebar and main content
-       side by side. The sidebar is a fixed width
-       (var(--sidebar-w)) and main content fills rest.
-    ───────────────────────────────────────────── */
-    .layout {
-      max-width: 1060px;
+    /* ── SUB NAV ── */
+    .sub-nav {
+      background: rgba(255,255,255,0.5);
+      border-top: 1px solid rgba(0,0,0,0.08);
+    }
+
+    .sub-nav-inner {
+      max-width: 1080px;
       margin: 0 auto;
-      padding: 14px 12px;
+      padding: 0 16px;
       display: flex;
-      gap: 20px;
-      align-items: flex-start;
     }
 
-    .main-content {
-      flex: 1;          /* grow to fill available space */
-      min-width: 0;     /* prevents flex overflow bugs */
-    }
-
-    /* ─────────────────────────────────────────────
-       SIDEBAR
-       width is fixed. It doesn't grow or shrink.
-    ───────────────────────────────────────────── */
-    .sidebar {
-      width: var(--sidebar-w);
-      flex-shrink: 0;   /* never get smaller than its width */
-    }
-
-    /* ─────────────────────────────────────────────
-       BANNER (the "Join" strip at the top)
-    ───────────────────────────────────────────── */
-    .join-banner {
-      background: #fff;
-      border: 1px solid var(--border);
-      border-radius: 2px;
-      padding: 14px 18px;
-      margin-bottom: 16px;
-      display: flex;
-      align-items: center;
-      gap: 18px;
-    }
-
-    .join-banner p {
-      font-size: 15px;
+    .sub-nav a {
+      font-size: 13px;
       font-weight: bold;
-      flex: 1;
+      color: #1a3a6a;
+      padding: 6px 14px;
+      text-decoration: none;
+      border-right: 1px solid rgba(0,0,0,0.1);
+      display: block;
+      font-family: Tahoma, sans-serif;
     }
 
-    .join-banner .signin-note {
-      font-size: 12px;
-      color: var(--gray-text);
+    .sub-nav a:hover, .sub-nav a.active {
+      background: rgba(255,255,255,0.6);
+      color: #2a6ac0;
     }
 
-    .join-banner .signin-note a {
-      font-weight: bold;
-    }
+    .sub-nav a:first-child { border-left: 1px solid rgba(0,0,0,0.1); }
 
-    /* ─────────────────────────────────────────────
-       SECTION HEADERS
-       The teal/blue "Recommended for You" headings.
-    ───────────────────────────────────────────── */
-    .section-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      border-bottom: 1px solid var(--border);
-      padding-bottom: 4px;
-      margin-bottom: 10px;
-    }
+    /* ══════════════════════════════════════════
+       MAIN GRID
+       Full-width 4-column grid of 4:3 cells.
+       No sections, no sidebar — pure image grid.
+       Each cell is exactly 4:3 via aspect-ratio.
+    ══════════════════════════════════════════ */
+    .main-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 88px;
+  padding: 8%;
+  background: #fff;
+}
 
-    .section-header h2 {
-      font-size: 14px;
-      font-weight: bold;
-      color: #286090;    /* that specific YouTube teal-blue */
-    }
+    /* ── GRID CELL ── */
+  .grid-cell {
+  position: relative;
+  aspect-ratio: 4/3;
+  background: transparent;
+  overflow: hidden;
+  cursor: pointer;
+}
 
-    .section-header .controls {
-      display: flex;
-      gap: 4px;
-      font-size: 11px;
-      color: var(--gray-text);
-    }
-
-    .section-header .controls a {
-      color: var(--gray-text);
-      font-size: 11px;
-    }
-
-    /* ─────────────────────────────────────────────
-       VIDEO GRID (top "Recommended" row)
-       display: grid with repeat(4, 1fr) = 4 equal
-       columns. 1fr = "1 fraction of available space"
-    ───────────────────────────────────────────── */
-    .video-grid-4 {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 12px;
-      margin-bottom: 20px;
-    }
-
-    .video-grid-2 {
-      /* Two-column layout used in category sections */
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 16px;
-      margin-bottom: 20px;
-    }
-
-    /* ─────────────────────────────────────────────
-       VIDEO CARD (thumbnail + info below)
-    ───────────────────────────────────────────── */
-    .video-card {
-      cursor: pointer;
-    }
-
-    /* The thumbnail container — aspect-ratio keeps
-       it a consistent rectangle regardless of size */
-    .thumb {
-      position: relative;
-      aspect-ratio: 16/9;
-      background: #000;
-      overflow: hidden;
-      margin-bottom: 5px;
-    }
-
-    .thumb img {
+.grid-cell.has-zoom {
+  overflow: visible;  /* allows image to break out of the cell */
+  z-index: 999;
+}
+    /* Image fills the cell, contained — no cropping */
+    .grid-cell img {
       width: 100%;
       height: 100%;
-      object-fit: cover;
+      object-fit: contain;   /* fits whole image, blank space shows bg */
       display: block;
-      transition: opacity 0.15s;
+      transition: opacity 0.25s ease;
     }
 
-    .video-card:hover .thumb img { opacity: 0.85; }
+    /* Placeholder colored box — remove when adding real images */
+    .grid-cell .placeholder {
+      width: 100%;
+      height: 100%;
+    }
 
-    /* The duration badge in the corner */
-    .duration {
+    /* Vimeo/video iframe fills cell */
+    .grid-cell iframe {
       position: absolute;
-      bottom: 4px;
-      right: 4px;
-      background: rgba(0,0,0,0.8);
-      color: #fff;
-      font-size: 11px;
-      padding: 1px 4px;
-      border-radius: 2px;
+      top: 0; left: 0;
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+
+    /* ── HOVER OVERLAY ── */
+    .cell-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0);
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      padding: 10px;
+      transition: background 0.25s ease;
+      pointer-events: none;
+    }
+
+    .grid-cell:hover .cell-overlay {
+      background: rgba(32, 32, 32, 0.8);
+    }
+
+    .grid-cell:hover img {
+      opacity: 0.1;
+    }
+
+  .cell-title {
+  font-size: 13px;
+  font-weight: bold;
+  color: #fff;
+  text-shadow: 0 1px 4px rgba(0,0,0,1), 0 0 8px rgba(0,0,0,0.8);
+  visibility: hidden;
+  transform: translateY(4px);
+  transition: visibility 0s, transform 0.25s ease;
+  line-height: 1.3;
+}
+
+.cell-meta {
+  font-size: 11px;
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0,0,0,1);
+  visibility: hidden;
+  transform: translateY(4px);
+  transition: visibility 0s, transform 0.2s ease;
+  margin-top: 3px;
+}
+
+.grid-cell:hover .cell-title,
+.grid-cell:hover .cell-meta {
+  visibility: visible;
+  transform: translateY(0);
+}
+
+    /* ══════════════════════════════════════════
+       OUTSIDE BLOCKS — Spotlight & Trending
+       These sit OUTSIDE the white page-wrapper,
+       floating on the grey background below it.
+    ══════════════════════════════════════════ */
+    .outside-panels {
+      max-width: 1080px;
+      margin: 12px auto 20px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      padding: 0 2px;
+    }
+
+    .outside-panel {
+      background: rgba(255,255,255,0.88);
+      border: 1px solid #b0b8c4;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+      padding: 12px 14px;
+    }
+
+    .outside-panel h3 {
+      font-size: 13px;
       font-weight: bold;
+      color: #286090;
+      border-bottom: 1px solid #c8d4de;
+      padding-bottom: 6px;
+      margin-bottom: 10px;
       letter-spacing: 0.02em;
     }
 
-    .video-title {
-      font-size: 12px;
+    .panel-item {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
+      align-items: flex-start;
+      cursor: pointer;
+    }
+
+    .panel-thumb {
+      width: 80px;
+      flex-shrink: 0;
+      aspect-ratio: 4/3;
+      background: #222;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .panel-thumb img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .panel-thumb .placeholder {
+      width: 100%; height: 100%;
+    }
+
+    .panel-info { flex: 1; }
+
+    .panel-title {
+      font-size: 11px;
       font-weight: bold;
       color: var(--blue);
       line-height: 1.35;
       margin-bottom: 2px;
     }
 
-    .video-card:hover .video-title { text-decoration: underline; }
+    .panel-item:hover .panel-title { text-decoration: underline; }
 
-    .video-meta {
-      font-size: 11px;
+    .panel-meta {
+      font-size: 10px;
       color: var(--gray-text);
       line-height: 1.5;
     }
 
-    .video-meta .channel { color: var(--blue); font-size: 11px; }
-
-    /* ─────────────────────────────────────────────
-       CATEGORY ROW
-       Each category (Entertainment, Music...) has
-       a heading + one featured video on the left
-       + a list of links on the right.
-    ───────────────────────────────────────────── */
-    .category-section {
-      margin-bottom: 22px;
-    }
-
-    .category-header {
-      font-size: 15px;
-      font-weight: bold;
-      color: #286090;
-      margin-bottom: 10px;
-    }
-
-    .category-row {
-      display: flex;
-      gap: 12px;
-    }
-
-    .category-thumb {
-      width: 120px;
-      flex-shrink: 0;
-    }
-
-    .category-thumb .thumb {
-      width: 120px;
-      aspect-ratio: 4/3;
-    }
-
-    .category-info .video-title { font-size: 12px; }
-
-    /* ─────────────────────────────────────────────
-       SIDEBAR PANELS
-    ───────────────────────────────────────────── */
-    .sidebar-panel {
-      background: #fff;
-      border: 1px solid var(--border);
-      margin-bottom: 14px;
-      padding: 10px 12px;
-    }
-
-    .sidebar-panel h3 {
-      font-size: 13px;
-      font-weight: bold;
-      color: #286090;
-      border-bottom: 1px solid var(--border);
-      padding-bottom: 6px;
-      margin-bottom: 8px;
-    }
-
-    .sidebar-panel h4 {
-      font-size: 12px;
-      font-weight: bold;
-      margin-bottom: 2px;
-      color: #333;
-    }
-
-    .sidebar-panel p {
-      font-size: 11px;
-      color: var(--gray-text);
-      line-height: 1.45;
-      margin-bottom: 6px;
-    }
-
-    .sidebar-panel .presented-by {
-      font-size: 10px;
-      color: #999;
-      margin-bottom: 8px;
-    }
-
-    /* Sidebar video item = small thumb + text side by side */
-    .sidebar-video {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 10px;
-      align-items: flex-start;
-    }
-
-    .sidebar-video .thumb {
-      width: 80px;
-      flex-shrink: 0;
-      aspect-ratio: 4/3;
-      margin-bottom: 0;
-    }
-
-    .sidebar-video .info { flex: 1; }
-
-    .sidebar-video .video-title {
-      font-size: 11px;
-      line-height: 1.3;
-    }
-
-    /* ─────────────────────────────────────────────
-       PLACEHOLDER THUMBNAILS
-       These are colored boxes standing in for real
-       images. Replace with <img src="your-image.jpg">
-       and remove the placeholder-* classes.
-    ───────────────────────────────────────────── */
-    .placeholder-thumb {
-      width: 100%;
-      height: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 10px;
-      color: rgba(255,255,255,0.4);
-      letter-spacing: 0.1em;
-    }
-
-    /* ─────────────────────────────────────────────
-       FOOTER
-    ───────────────────────────────────────────── */
+    /* ── FOOTER ── */
     footer {
-      border-top: 1px solid var(--border);
-      padding: 16px 12px;
+      max-width: 1080px;
+      margin: 0 auto 20px;
       text-align: center;
       font-size: 11px;
-      color: #999;
-      margin-top: 30px;
+      color: #888;
+      padding: 10px 0;
     }
 
-    footer a { color: #999; margin: 0 6px; }
+    footer a { color: #888; margin: 0 6px; }
     footer a:hover { color: var(--blue); }
+
+    /* ══════════════════════════════════════════
+       RESPONSIVE
+    ══════════════════════════════════════════ */
+    @media (max-width: 700px) {
+      .main-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .outside-panels {
+        grid-template-columns: 1fr;
+      }
+      .search-bar { display: none; }
+      .logo { font-size: 22px; }
+      .header-inner { height: 52px; }
+    }
+    .zoom-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 998;
+  background: rgba(0,0,0,0);
+  transition: background 0.3s ease;
+}
+
+.zoom-overlay.open {
+  display: block;
+  background: rgba(0,0,0,0.4);
+}
+
+.grid-cell img {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  transform-origin: center center;
+  position: relative;
+  z-index: 1;
+}
+
+.grid-cell img.zoomed {
+  transform: scale(2.5);
+  z-index: 999;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+  cursor: zoom-out;
+}
 
   </style>
 </head>
 <body>
 
-  <!-- ═══════════════ HEADER ═══════════════ -->
-  <header>
-    <div class="header-inner">
+  <div class="page-wrapper">
 
-      <!-- LOGO: swap "Your" for your own name -->
-      <a href="#" class="logo">
-        <span>Your</span>Name
-      </a>
+    <!-- HEADER -->
+    <header>
+      <div class="header-inner">
+        <a href="#" class="logo">helenyzh</a>
+        <div class="search-bar">
+          <input type="text" placeholder="Search something" />
+          <button>find</button>
+        </div>
+        <div class="header-links">
+          <a href="#" class="btn-primary">Contact</a>
+          <a href="#">About</a>
+        </div>
+      </div>
+      <div class="sub-nav">
+        <div class="sub-nav-inner">
+          <a href="#" class="active">All</a>
+          <a href="#">Images</a>
 
-      <!-- SEARCH BAR -->
-      <div class="search-bar">
-        <input type="text" placeholder="Search" />
-        <button>Search</button>
+        </div>
+      </div>
+    </header>
+
+    <!-- ══════════════════════════════════════
+         MAIN GRID
+         Replace placeholder divs with:
+         <img src="your-photo.jpg" alt="title">
+         For video cells, the iframe is already
+         wired up — just swap the src URL.
+    ══════════════════════════════════════════ -->
+    <div class="main-grid">
+
+      <!-- CELL 1 — Vimeo video -->
+      <div class="grid-cell">
+        <iframe src="https://player.vimeo.com/video/1093073330?h=7ed1b5d76b&badge=0&autopause=0&player_id=0&app_id=58479"
+          allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media"
+          referrerpolicy="strict-origin-when-cross-origin"
+          title="BirthLook Reveal">
+        </iframe>
+        <div class="cell-overlay">
+          <div class="cell-title">BirthLook Reveal</div>
+          <div class="cell-meta">2 months ago · helenyzh</div>
+        </div>
       </div>
 
-      <!-- TOP RIGHT LINKS -->
-      <div class="header-links">
-        <a href="#">Browse</a>
-        <a href="#">Upload</a>
-        <a href="#" class="btn-primary">Contact ›</a>
-        <a href="#">About</a>
+      <!-- CELL 2 -->
+      <div class="grid-cell">
+        <img src="jackbed.png" alt="JO_1">
+        <div class="cell-overlay">
+          <div class="cell-title">JO_1</div>
+          <div class="cell-meta">helenyzh</div>
+        </div>
       </div>
 
+      <!-- CELL 3 -->
+      <div class="grid-cell">
+        <img src="maincutnotext-2.jpg" alt="Main Cuts of a Body, 2024">
+        <div class="cell-overlay">
+          <div class="cell-title">Main Cuts of a Body, 2024</div>
+          <div class="cell-meta">helenyzh</div>
+        </div>
+      </div>
+
+      <!-- CELL 4 -->
+      <div class="grid-cell">
+        <img src="daivacraft.jpeg" alt="Daiva's Craft">
+        <div class="cell-overlay">
+          <div class="cell-title">Daiva's Craft</div>
+          <div class="cell-meta">3 months ago · helenyzh</div>
+        </div>
+      </div>
+
+      <!-- CELL 5 -->
+      <div class="grid-cell">
+       <img src="hanajo.jpg" alt="Female Photographer">
+        <div class="cell-overlay">
+          <div class="cell-title">Female Photographer, 2025</div>
+          <div class="cell-meta">helenyzh</div>
+        </div>
+      </div>
+
+      <!-- CELL 6 -->
+      <div class="grid-cell">
+       <img src="fishshoot_1.jpg" alt="">
+        <div class="cell-overlay">
+          <div class="cell-title">Study No. 4</div>
+          <div class="cell-meta">helenyzh</div>
+        </div>
+      </div>
+
+      <!-- CELL 7 -->
+      <div class="grid-cell">
+       <img src="jacko-3.jpg" alt="Daiva's Craft">
+        <div class="cell-overlay">
+          <div class="cell-title">Photo</div>
+          <div class="cell-meta">helenyzh</div>
+        </div>
+      </div>
+
+      <!-- CELL 8 -->
+      <div class="grid-cell">
+        <div class="placeholder" style="background: linear-gradient(135deg,#3a1a1a,#7a3a3a);"></div>
+        <div class="cell-overlay">
+          <div class="cell-title">Red Study</div>
+          <div class="cell-meta">helenyzh</div>
+        </div>
+      </div>
+
+      <!-- CELL 9 -->
+      <div class="grid-cell">
+        <div class="placeholder" style="background: linear-gradient(135deg,#2a3a1a,#5a7a3a);"></div>
+        <div class="cell-overlay">
+          <div class="cell-title">Portrait, 2022</div>
+          <div class="cell-meta">helenyzh</div>
+        </div>
+      </div>
+
+      <!-- CELL 10 -->
+      <div class="grid-cell">
+        <div class="placeholder" style="background: linear-gradient(135deg,#1a1a3a,#3a3a7a);"></div>
+        <div class="cell-overlay">
+          <div class="cell-title">Blue Period</div>
+          <div class="cell-meta">helenyzh</div>
+        </div>
+      </div>
+
+      <!-- CELL 11 -->
+      <div class="grid-cell">
+        <div class="placeholder" style="background: linear-gradient(135deg,#3a3a1a,#7a7a3a);"></div>
+        <div class="cell-overlay">
+          <div class="cell-title">Panoramic Study</div>
+          <div class="cell-meta">helenyzh</div>
+        </div>
+      </div>
+
+      <!-- CELL 12 -->
+      <div class="grid-cell">
+        <div class="placeholder" style="background: linear-gradient(135deg,#1a3a3a,#3a7a7a);"></div>
+        <div class="cell-overlay">
+          <div class="cell-title">Teal No. 1</div>
+          <div class="cell-meta">helenyzh</div>
+        </div>
+      </div>
+
+      <!-- CELL 13 -->
+      <div class="grid-cell">
+        <div class="placeholder" style="background: linear-gradient(135deg,#1a3a3a,#3a7a7a);"></div>
+        <div class="cell-overlay">
+          <div class="cell-title">Teal No. 1</div>
+          <div class="cell-meta">helenyzh</div>
+        </div>
+      </div>
+
+    </div><!-- /main-grid -->
+
+  </div><!-- /page-wrapper -->
+
+  <!-- ══════════════════════════════════════
+       OUTSIDE PANELS — float on grey bg
+       below the white page wrapper
+  ══════════════════════════════════════ -->
+  <div class="outside-panels">
+
+    <div class="outside-panel">
+      <h3>Spotlight</h3>
+
+      <div class="panel-item">
+        <div class="panel-thumb">
+          <div class="placeholder" style="background: linear-gradient(135deg,#2a3a4a,#4a5a6a);"></div>
+        </div>
+        <div class="panel-info">
+          <div class="panel-title"><a href="#">Opening Night — March 2015</a></div>
+          <div class="panel-meta">135,862 views</div>
+        </div>
+      </div>
+
+      <div class="panel-item">
+        <div class="panel-thumb">
+          <div class="placeholder" style="background: linear-gradient(135deg,#3a2a4a,#5a4a6a);"></div>
+        </div>
+        <div class="panel-info">
+          <div class="panel-title"><a href="#">Studio Visit</a></div>
+          <div class="panel-meta">16,517 views</div>
+        </div>
+      </div>
+
+      <div class="panel-item">
+        <div class="panel-thumb">
+          <div class="placeholder" style="background: linear-gradient(135deg,#1a3a2a,#3a5a4a);"></div>
+        </div>
+        <div class="panel-info">
+          <div class="panel-title"><a href="#">Full audio interview</a></div>
+          <div class="panel-meta">31,987 views</div>
+        </div>
+      </div>
     </div>
-  </header>
 
-  <!-- ═══════════════ PAGE LAYOUT ═══════════════ -->
-  <div class="layout">
+    <div class="outside-panel">
+      <h3>Trending</h3>
 
-    <!-- ─── LEFT: MAIN CONTENT ─── -->
-    <div class="main-content">
-
-      <!-- JOIN BANNER — delete this if you don't need it -->
-      <div class="join-banner">
-        <p>See my latest visual work and ongoing projects.</p>
-        <a href="#" class="btn-primary">Get in touch ›</a>
-        <span class="signin-note">Or view my <a href="#">full archive</a></span>
-      </div>
-
-      <!-- ── SECTION: RECENT WORK ── -->
-      <div class="section-header">
-        <h2>Recent Work &nbsp;<span style="font-weight:normal; font-size:12px; color:#999;">Learn More</span></h2>
-        <div class="controls">
-          <a href="#">Edit</a> &nbsp;▲ ▼ ✕
+      <div class="panel-item">
+        <div class="panel-thumb">
+          <div class="placeholder" style="background: linear-gradient(135deg,#3a1a1a,#6a3a2a);"></div>
+        </div>
+        <div class="panel-info">
+          <div class="panel-title"><a href="#">Summer Residency Recap</a></div>
+          <div class="panel-meta">by helenyzh · 471,081 views</div>
         </div>
       </div>
 
-      <!--
-        VIDEO GRID: 4 columns.
-        Each .video-card = one piece of work.
-        TO ADD YOUR IMAGE: replace the <div class="placeholder-thumb">
-        with: <img src="path/to/your-image.jpg" alt="title">
-      -->
-      <div class="video-grid-4">
-
-        <div class="video-card">
-          <div class="thumb">
-            <div class="placeholder-thumb" style="background: linear-gradient(135deg,#2a2a3a,#4a3a5a);">img</div>
-            <span class="duration">3:49</span>
-          </div>
-          <div class="video-title"><a href="#">Untitled Series No. 1</a></div>
-          <div class="video-meta">
-            2 months ago · 24,107 views<br>
-            <a class="channel" href="#">yourname</a>
-          </div>
+      <div class="panel-item">
+        <div class="panel-thumb">
+          <div class="placeholder" style="background: linear-gradient(135deg,#1a1a3a,#3a3a6a);"></div>
         </div>
-
-        <div class="video-card">
-          <div class="thumb">
-            <div class="placeholder-thumb" style="background: linear-gradient(135deg,#3a2a1a,#5a4a2a);">img</div>
-            <span class="duration">5:03</span>
-          </div>
-          <div class="video-title"><a href="#">Studio Documentation</a></div>
-          <div class="video-meta">
-            1 month ago · 7,841 views<br>
-            <a class="channel" href="#">yourname</a>
-          </div>
-        </div>
-
-        <div class="video-card">
-          <div class="thumb">
-            <div class="placeholder-thumb" style="background: linear-gradient(135deg,#1a3a2a,#2a5a4a);">img</div>
-            <span class="duration">1:23</span>
-          </div>
-          <div class="video-title"><a href="#">Process: Ink on Paper</a></div>
-          <div class="video-meta">
-            1 week ago · 938 views<br>
-            <a class="channel" href="#">yourname</a>
-          </div>
-        </div>
-
-        <div class="video-card">
-          <div class="thumb">
-            <div class="placeholder-thumb" style="background: linear-gradient(135deg,#3a1a1a,#6a3a3a);">img</div>
-            <span class="duration">4:01</span>
-          </div>
-          <div class="video-title"><a href="#">Exhibition Walk-through</a></div>
-          <div class="video-meta">
-            3 months ago · 3,409 views<br>
-            <a class="channel" href="#">yourname</a>
-          </div>
-        </div>
-
-      </div><!-- /video-grid-4 -->
-
-      <!-- ── SECTION: BY CATEGORY ── -->
-      <div class="section-header">
-        <h2>Most Popular</h2>
-        <div class="controls">▲ ▼ ✕</div>
-      </div>
-
-      <!--
-        2-COLUMN GRID for categories.
-        Each category block has a heading, a featured
-        thumbnail on the left, and title+meta on right.
-      -->
-      <div class="video-grid-2">
-
-        <!-- CATEGORY 1 -->
-        <div class="category-section">
-          <div class="category-header">Photography</div>
-          <div class="category-row">
-            <div class="category-thumb">
-              <div class="thumb">
-                <div class="placeholder-thumb" style="background: linear-gradient(135deg,#1a2a3a,#2a4a6a);">img</div>
-                <span class="duration">4:25</span>
-              </div>
-            </div>
-            <div class="category-info">
-              <div class="video-title"><a href="#">Analogue Roll — Summer Archive</a></div>
-              <div class="video-meta">
-                638,248 views<br>
-                <a class="channel" href="#">yourname</a>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- CATEGORY 2 -->
-        <div class="category-section">
-          <div class="category-header">Illustration</div>
-          <div class="category-row">
-            <div class="category-thumb">
-              <div class="thumb">
-                <div class="placeholder-thumb" style="background: linear-gradient(135deg,#2a1a3a,#5a3a6a);">img</div>
-                <span class="duration">3:34</span>
-              </div>
-            </div>
-            <div class="category-info">
-              <div class="video-title"><a href="#">Character Studies Vol. II</a></div>
-              <div class="video-meta">
-                3,700,687 views<br>
-                <a class="channel" href="#">yourname</a>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- CATEGORY 3 -->
-        <div class="category-section">
-          <div class="category-header">Moving Image</div>
-          <div class="category-row">
-            <div class="category-thumb">
-              <div class="thumb">
-                <div class="placeholder-thumb" style="background: linear-gradient(135deg,#1a3a1a,#3a6a3a);">img</div>
-                <span class="duration">1:06</span>
-              </div>
-            </div>
-            <div class="category-info">
-              <div class="video-title"><a href="#">Looping Study — Rain Window</a></div>
-              <div class="video-meta">
-                207,929 views<br>
-                <a class="channel" href="#">yourname</a>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- CATEGORY 4 -->
-        <div class="category-section">
-          <div class="category-header">Print & Design</div>
-          <div class="category-row">
-            <div class="category-thumb">
-              <div class="thumb">
-                <div class="placeholder-thumb" style="background: linear-gradient(135deg,#3a2a1a,#6a5a3a);">img</div>
-                <span class="duration">2:53</span>
-              </div>
-            </div>
-            <div class="category-info">
-              <div class="video-title"><a href="#">Risograph Poster Series</a></div>
-              <div class="video-meta">
-                964,086 views<br>
-                <a class="channel" href="#">yourname</a>
-              </div>
-            </div>
-          </div>
-        </div>
-
-      </div><!-- /video-grid-2 -->
-
-    </div><!-- /main-content -->
-
-    <!-- ─── RIGHT: SIDEBAR ─── -->
-    <div class="sidebar">
-
-      <!-- SPOTLIGHT PANEL -->
-      <div class="sidebar-panel">
-        <h3>Spotlight</h3>
-        <h4>Currently showing</h4>
-        <p class="presented-by">Presented by: <a href="#">Your Gallery</a></p>
-        <p>New prints available from the recent series. Limited edition, hand-numbered. Contact for pricing.</p>
-
-        <div class="sidebar-video">
-          <div class="thumb">
-            <div class="placeholder-thumb" style="background: linear-gradient(135deg,#2a3a4a,#4a5a6a);">img</div>
-            <span class="duration">4:11</span>
-          </div>
-          <div class="info">
-            <div class="video-title"><a href="#">Opening Night — March 2015</a></div>
-            <div class="video-meta">135,862 views</div>
-          </div>
-        </div>
-
-        <div class="sidebar-video">
-          <div class="thumb">
-            <div class="placeholder-thumb" style="background: linear-gradient(135deg,#3a2a4a,#5a4a6a);">img</div>
-            <span class="duration">3:20</span>
-          </div>
-          <div class="info">
-            <div class="video-title"><a href="#">Studio Visit with K.T.</a></div>
-            <div class="video-meta">16,517 views</div>
-          </div>
-        </div>
-
-        <div class="sidebar-video">
-          <div class="thumb">
-            <div class="placeholder-thumb" style="background: linear-gradient(135deg,#1a3a2a,#3a5a4a);">img</div>
-            <span class="duration">3:19</span>
-          </div>
-          <div class="info">
-            <div class="video-title"><a href="#">Full audio interview</a></div>
-            <div class="video-meta">31,987 views</div>
-          </div>
+        <div class="panel-info">
+          <div class="panel-title"><a href="#">Behind the Scenes — Darkroom</a></div>
+          <div class="panel-meta">by helenyzh · 271,357 views</div>
         </div>
       </div>
 
-      <!-- TRENDING PANEL -->
-      <div class="sidebar-panel">
-        <h3>Trending</h3>
-
-        <div class="sidebar-video">
-          <div class="thumb">
-            <div class="placeholder-thumb" style="background: linear-gradient(135deg,#3a1a1a,#6a3a2a);">img</div>
-            <span class="duration">4:16</span>
-          </div>
-          <div class="info">
-            <div class="video-title"><a href="#">Summer Residency Recap</a></div>
-            <div class="video-meta">by yourname<br>471,081 views</div>
-          </div>
+      <div class="panel-item">
+        <div class="panel-thumb">
+          <div class="placeholder" style="background: linear-gradient(135deg,#1a3a1a,#3a6a3a);"></div>
         </div>
-
-        <div class="sidebar-video">
-          <div class="thumb">
-            <div class="placeholder-thumb" style="background: linear-gradient(135deg,#1a1a3a,#3a3a6a);">img</div>
-            <span class="duration">1:54</span>
-          </div>
-          <div class="info">
-            <div class="video-title"><a href="#">Behind the Scenes — Darkroom</a></div>
-            <div class="video-meta">by yourname<br>271,357 views</div>
-          </div>
-        </div>
-
-        <div class="sidebar-video">
-          <div class="thumb">
-            <div class="placeholder-thumb" style="background: linear-gradient(135deg,#1a3a1a,#3a6a3a);">img</div>
-            <span class="duration">0:32</span>
-          </div>
-          <div class="info">
-            <div class="video-title"><a href="#">New work announcement</a></div>
-            <div class="video-meta">by yourname<br>63,574 views</div>
-          </div>
+        <div class="panel-info">
+          <div class="panel-title"><a href="#">New work announcement</a></div>
+          <div class="panel-meta">by helenyzh · 63,574 views</div>
         </div>
       </div>
+    </div>
 
-    </div><!-- /sidebar -->
+  </div><!-- /outside-panels -->
 
-  </div><!-- /layout -->
-
-  <!-- FOOTER -->
   <footer>
-    <div>
-      <a href="#">About</a>
-      <a href="#">Contact</a>
-      <a href="#">Archive</a>
-      <a href="#">Press</a>
-    </div>
-    <div style="margin-top:6px;">© 2015 Your Name. All rights reserved.</div>
+    <a href="#">About</a>
+    <a href="#">Contact</a>
+    <a href="#">Archive</a>
+    <a href="#">Press</a>
+    <div style="margin-top:6px;">© 2026 Helen Yang. All rights reserved.</div>
   </footer>
 
+  <script src="https://player.vimeo.com/api/player.js"></script>
+<script src="https://player.vimeo.com/api/player.js"></script>
+
+<script>
+  const overlay = document.getElementById('zoom-overlay');
+
+  document.querySelectorAll('.grid-cell img').forEach(img => {
+    img.style.cursor = 'zoom-in';
+
+    img.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isZoomed = img.classList.contains('zoomed');
+
+      // close any currently open zoom
+      document.querySelectorAll('.grid-cell img.zoomed').forEach(i => {
+        i.classList.remove('zoomed');
+        i.closest('.grid-cell').classList.remove('has-zoom');
+      });
+
+      if (!isZoomed) {
+        img.classList.add('zoomed');
+        img.closest('.grid-cell').classList.add('has-zoom');
+        overlay.classList.add('open');
+      } else {
+        overlay.classList.remove('open');
+      }
+    });
+  });
+
+  overlay.addEventListener('click', () => {
+    document.querySelectorAll('.grid-cell img.zoomed').forEach(i => {
+      i.classList.remove('zoomed');
+      i.closest('.grid-cell').classList.remove('has-zoom');
+    });
+    overlay.classList.remove('open');
+  });
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      document.querySelectorAll('.grid-cell img.zoomed').forEach(i => {
+        i.classList.remove('zoomed');
+        i.closest('.grid-cell').classList.remove('has-zoom');
+      });
+      overlay.classList.remove('open');
+    }
+  });
+</script>
 </body>
 </html>
