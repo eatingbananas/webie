@@ -291,12 +291,9 @@ async function initCursor() {
   layer3.style.maskRepeat         = 'no-repeat';
   layer3.style.maskPosition       = '0 0';
 
-  document.addEventListener('mousemove',   e => moveReveal(e.clientX, e.clientY));
-  document.addEventListener('mouseleave',  hideReveal);
-  document.addEventListener('touchstart',  e => moveReveal(e.touches[0].clientX, e.touches[0].clientY), { passive: true });
-  document.addEventListener('touchmove',   e => moveReveal(e.touches[0].clientX, e.touches[0].clientY), { passive: true });
-  document.addEventListener('touchend',    hideReveal);
-  document.addEventListener('touchcancel', hideReveal);
+  document.addEventListener('mousemove',  e => moveReveal(e.clientX, e.clientY));
+  document.addEventListener('mouseleave', hideReveal);
+  // Touch listeners are added by MOBILE TOUCH FEATURE below
 }
 
 function moveReveal(clientX, clientY) {
@@ -319,3 +316,123 @@ function hideReveal() {
 
 initCursor();
 requestAnimationFrame(restoreLoop);
+
+// ── MOBILE TOUCH FEATURE ──────────────────────────────────────────────────────
+// On mobile, single-finger swipes scroll the page normally. The figure sits
+// fixed on screen at its last position, revealing whatever surface content
+// happens to be beneath it as the page scrolls.
+//
+// Press-and-hold on the figure for 0.5 s activates drag mode: the figure
+// follows the finger, page scroll is suppressed, erosion trail accumulates.
+// On lift, the figure stays at the release position and drag mode ends.
+//
+// Two state variables drive everything:
+//   mob_pos      — current fixed viewport position of the figure centre
+//   mob_dragging — true while long-press drag is active
+//
+// moveReveal() is called in both modes to keep the frost reveal correct.
+// The figure is never hidden on mobile (no hideReveal on touchend).
+
+const MOB_HOLD_MS = 500;   // long-press threshold in ms
+
+const mob_pos = { x: 0, y: 0 };  // viewport coords of figure centre
+let mob_dragging   = false;
+let mob_holdTimer  = null;
+let mob_touchId    = null;        // identifier of the active touch
+
+// Place figure at viewport centre on load (before any touch).
+// Deferred until figW is known (set during initCursor's image load).
+function mob_initPosition() {
+  mob_pos.x = window.innerWidth  / 2;
+  mob_pos.y = window.innerHeight / 2;
+  moveReveal(mob_pos.x, mob_pos.y);
+}
+
+function mob_getTouch(list, id) {
+  for (let i = 0; i < list.length; i++) {
+    if (list[i].identifier === id) return list[i];
+  }
+  return null;
+}
+
+function mob_onTouchStart(e) {
+  if (mob_touchId !== null) return;  // ignore extra fingers
+  const t = e.touches[0];
+  mob_touchId = t.identifier;
+
+  const tx = t.clientX, ty = t.clientY;
+
+  // Start long-press timer — if the finger doesn't move much and holds 0.5 s,
+  // activate drag mode.
+  mob_holdTimer = setTimeout(() => {
+    mob_dragging  = true;
+    mob_holdTimer = null;
+  }, MOB_HOLD_MS);
+
+  // Store touch-down position so we can cancel the timer on significant move.
+  mob_onTouchStart._startX = tx;
+  mob_onTouchStart._startY = ty;
+}
+
+function mob_onTouchMove(e) {
+  const t = mob_getTouch(e.touches, mob_touchId);
+  if (!t) return;
+
+  const tx = t.clientX, ty = t.clientY;
+
+  if (!mob_dragging) {
+    // Check if finger moved far enough to cancel the hold timer (it's a scroll).
+    const dx = tx - mob_onTouchStart._startX;
+    const dy = ty - mob_onTouchStart._startY;
+    if (dx * dx + dy * dy > 20 * 20) {
+      clearTimeout(mob_holdTimer);
+      mob_holdTimer = null;
+    }
+    // Not dragging — let the browser scroll; figure stays where it is.
+    return;
+  }
+
+  // Drag mode: prevent page scroll, move figure.
+  e.preventDefault();
+  mob_pos.x = tx;
+  mob_pos.y = ty;
+  moveReveal(mob_pos.x, mob_pos.y);
+}
+
+function mob_onTouchEnd(e) {
+  const stillActive = mob_getTouch(e.touches, mob_touchId);
+  if (stillActive) return;  // this finger is still down (shouldn't happen, but guard)
+
+  clearTimeout(mob_holdTimer);
+  mob_holdTimer = null;
+  mob_dragging  = false;
+  mob_touchId   = null;
+  // Figure stays at mob_pos — no hideReveal.
+  // moveReveal was last called in mob_onTouchMove or mob_onTouchStart; position is current.
+}
+
+// Re-sync figure position on scroll — the surface moves under the figure so
+// revealInner offset must be recalculated (getBoundingClientRect changes).
+function mob_onScroll() {
+  moveReveal(mob_pos.x, mob_pos.y);
+}
+
+// Only attach touch/scroll listeners on touch-capable devices.
+if ('ontouchstart' in window) {
+  // touchmove must be non-passive so we can call preventDefault during drag.
+  document.addEventListener('touchstart',  mob_onTouchStart, { passive: true });
+  document.addEventListener('touchmove',   mob_onTouchMove,  { passive: false });
+  document.addEventListener('touchend',    mob_onTouchEnd,   { passive: true });
+  document.addEventListener('touchcancel', mob_onTouchEnd,   { passive: true });
+  document.addEventListener('scroll',      mob_onScroll,     { passive: true });
+
+  // Place figure at centre once figW is available (initCursor is async).
+  // Poll briefly — figW is set within ~1 frame of the image loading.
+  const mob_waitForFigW = setInterval(() => {
+    if (figW > 0) {
+      clearInterval(mob_waitForFigW);
+      mob_initPosition();
+    }
+  }, 50);
+}
+// ── END MOBILE TOUCH FEATURE ──────────────────────────────────────────────────
