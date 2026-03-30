@@ -318,121 +318,101 @@ initCursor();
 requestAnimationFrame(restoreLoop);
 
 // ── MOBILE TOUCH FEATURE ──────────────────────────────────────────────────────
-// On mobile, single-finger swipes scroll the page normally. The figure sits
-// fixed on screen at its last position, revealing whatever surface content
-// happens to be beneath it as the page scrolls.
+// 1-finger touch: drags the figure. Page does not scroll. Erosion trail active.
+//   Figure stays at release position when finger lifts.
+// 2-finger touch: scrolls the page normally (browser default).
+//   Figure stays fixed at its last position; revealInner re-syncs on scroll.
 //
-// Press-and-hold on the figure for 0.5 s activates drag mode: the figure
-// follows the finger, page scroll is suppressed, erosion trail accumulates.
-// On lift, the figure stays at the release position and drag mode ends.
-//
-// Two state variables drive everything:
-//   mob_pos      — current fixed viewport position of the figure centre
-//   mob_dragging — true while long-press drag is active
-//
-// moveReveal() is called in both modes to keep the frost reveal correct.
-// The figure is never hidden on mobile (no hideReveal on touchend).
+// Hint: on first mobile visit this session, show "drag to look, two fingers to
+//   scroll" at bottom-centre after 2 s. Fade in 1 s, hold 3 s, fade out 1 s.
+//   Stored in sessionStorage so it only shows once per session.
 
-const MOB_HOLD_MS = 500;   // long-press threshold in ms
+const mob_pos = { x: 0, y: 0 };  // current viewport position of figure centre
 
-const mob_pos = { x: 0, y: 0 };  // viewport coords of figure centre
-let mob_dragging   = false;
-let mob_holdTimer  = null;
-let mob_touchId    = null;        // identifier of the active touch
-
-// Place figure at viewport centre on load (before any touch).
-// Deferred until figW is known (set during initCursor's image load).
 function mob_initPosition() {
   mob_pos.x = window.innerWidth  / 2;
   mob_pos.y = window.innerHeight / 2;
   moveReveal(mob_pos.x, mob_pos.y);
 }
 
-function mob_getTouch(list, id) {
-  for (let i = 0; i < list.length; i++) {
-    if (list[i].identifier === id) return list[i];
-  }
-  return null;
-}
-
 function mob_onTouchStart(e) {
-  if (mob_touchId !== null) return;  // ignore extra fingers
-  const t = e.touches[0];
-  mob_touchId = t.identifier;
-
-  const tx = t.clientX, ty = t.clientY;
-
-  // Start long-press timer — if the finger doesn't move much and holds 0.5 s,
-  // activate drag mode.
-  mob_holdTimer = setTimeout(() => {
-    mob_dragging  = true;
-    mob_holdTimer = null;
-  }, MOB_HOLD_MS);
-
-  // Store touch-down position so we can cancel the timer on significant move.
-  mob_onTouchStart._startX = tx;
-  mob_onTouchStart._startY = ty;
-}
-
-function mob_onTouchMove(e) {
-  const t = mob_getTouch(e.touches, mob_touchId);
-  if (!t) return;
-
-  const tx = t.clientX, ty = t.clientY;
-
-  if (!mob_dragging) {
-    // Check if finger moved far enough to cancel the hold timer (it's a scroll).
-    const dx = tx - mob_onTouchStart._startX;
-    const dy = ty - mob_onTouchStart._startY;
-    if (dx * dx + dy * dy > 20 * 20) {
-      clearTimeout(mob_holdTimer);
-      mob_holdTimer = null;
-    }
-    // Not dragging — let the browser scroll; figure stays where it is.
-    return;
-  }
-
-  // Drag mode: prevent page scroll, move figure.
+  if (e.touches.length !== 1) return;  // 2+ fingers → let browser handle scroll
+  // Prevent scroll for single-finger drag
   e.preventDefault();
-  mob_pos.x = tx;
-  mob_pos.y = ty;
+  const t = e.touches[0];
+  mob_pos.x = t.clientX;
+  mob_pos.y = t.clientY;
   moveReveal(mob_pos.x, mob_pos.y);
 }
 
-function mob_onTouchEnd(e) {
-  const stillActive = mob_getTouch(e.touches, mob_touchId);
-  if (stillActive) return;  // this finger is still down (shouldn't happen, but guard)
-
-  clearTimeout(mob_holdTimer);
-  mob_holdTimer = null;
-  mob_dragging  = false;
-  mob_touchId   = null;
-  // Figure stays at mob_pos — no hideReveal.
-  // moveReveal was last called in mob_onTouchMove or mob_onTouchStart; position is current.
+function mob_onTouchMove(e) {
+  if (e.touches.length !== 1) return;  // 2+ fingers → let browser scroll
+  e.preventDefault();
+  const t = e.touches[0];
+  mob_pos.x = t.clientX;
+  mob_pos.y = t.clientY;
+  moveReveal(mob_pos.x, mob_pos.y);
 }
 
-// Re-sync figure position on scroll — the surface moves under the figure so
-// revealInner offset must be recalculated (getBoundingClientRect changes).
+function mob_onTouchEnd() {
+  // Figure stays at mob_pos — no position change, no hideReveal.
+  // If the last remaining finger just lifted and we're back to 0 touches,
+  // nothing to do. If fingers remain (e.g. transition from 2→1), ignore.
+}
+
+// Re-sync reveal offset when the page scrolls (2-finger scroll moves the
+// surface under the stationary figure — getBoundingClientRect changes).
 function mob_onScroll() {
   moveReveal(mob_pos.x, mob_pos.y);
 }
 
-// Only attach touch/scroll listeners on touch-capable devices.
+function mob_showHint() {
+  if (sessionStorage.getItem('mob_hint_shown')) return;
+  sessionStorage.setItem('mob_hint_shown', '1');
+
+  const hint = document.createElement('div');
+  hint.textContent = 'drag to look, two fingers to scroll';
+  Object.assign(hint.style, {
+    position:   'fixed',
+    bottom:     '32px',
+    left:       '50%',
+    transform:  'translateX(-50%)',
+    fontFamily: '"Lucida Grande", Verdana, Geneva, sans-serif',
+    fontSize:   '11px',
+    color:      '#aaa',
+    opacity:    '0',
+    transition: 'opacity 1s ease',
+    zIndex:     '100',
+    pointerEvents: 'none',
+    whiteSpace: 'nowrap',
+  });
+  document.body.appendChild(hint);
+
+  // Fade in after 2 s, hold 3 s, fade out
+  setTimeout(() => {
+    hint.style.opacity = '1';
+    setTimeout(() => {
+      hint.style.opacity = '0';
+      hint.addEventListener('transitionend', () => hint.remove(), { once: true });
+    }, 1000 + 3000);  // 1 s fade-in + 3 s hold
+  }, 2000);
+}
+
 if ('ontouchstart' in window) {
-  // touchmove must be non-passive so we can call preventDefault during drag.
-  document.addEventListener('touchstart',  mob_onTouchStart, { passive: true });
+  // touchstart and touchmove must be non-passive to call preventDefault.
+  document.addEventListener('touchstart',  mob_onTouchStart, { passive: false });
   document.addEventListener('touchmove',   mob_onTouchMove,  { passive: false });
   document.addEventListener('touchend',    mob_onTouchEnd,   { passive: true });
   document.addEventListener('touchcancel', mob_onTouchEnd,   { passive: true });
   document.addEventListener('scroll',      mob_onScroll,     { passive: true });
 
   // Place figure at centre once figW is available (initCursor is async).
-  // Poll briefly — figW is set within ~1 frame of the image loading.
   const mob_waitForFigW = setInterval(() => {
     if (figW > 0) {
       clearInterval(mob_waitForFigW);
       mob_initPosition();
+      mob_showHint();
     }
   }, 50);
 }
-// ── END MOBILE TOUCH FEATURE ──────────────────────────────────────────────────
+// ── END MOBILE TOUCH FEATURE ─────────────────────────────────────────────────
