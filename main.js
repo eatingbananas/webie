@@ -34,13 +34,12 @@ document.body.appendChild(layer3);
 
 const frostCanvas = document.createElement('canvas');
 Object.assign(frostCanvas.style, {
-  position:        'absolute',
-  top:             '0',
-  left:            '0',
-  zIndex:          '1',
-  filter:          'blur(20px)',
-  pointerEvents:   'none',
-  backgroundColor: '#f0eeeb',  // prevents blur edge bleed showing wrong color on iOS
+  position:      'absolute',
+  top:           '0',
+  left:          '0',
+  zIndex:        '1',
+  filter:        'blur(20px)',
+  pointerEvents: 'none',
 });
 stage.insertBefore(frostCanvas, layer2);
 
@@ -87,6 +86,8 @@ function buildImageCache(eW, eH) {
     img.onload  = done;
     img.onerror = done;
     img.src     = src;
+    // If already cached, onload may not fire — call done() immediately
+    if (img.complete) done();
   });
 }
 
@@ -319,157 +320,49 @@ initCursor();
 requestAnimationFrame(restoreLoop);
 
 // ── MOBILE TOUCH FEATURE ──────────────────────────────────────────────────────
-// State machine:
-//   IDLE       — no touches
-//   PENDING    — 1 finger down, 150 ms window to see if a 2nd finger arrives
-//   DRAGGING   — confirmed single-finger drag; figure follows finger, no scroll
-//   TWO_FINGER — 2+ fingers active; figure frozen, browser handles scroll/zoom
-//   COOLING    — all fingers lifted after TWO_FINGER; 200 ms lockout before
-//                single-finger drag can activate again
+// 1-finger touch: drags the figure. Page does not scroll. Erosion trail active.
+//   Figure stays at release position when finger lifts.
+// 2-finger touch: scrolls the page normally (browser default).
+//   Figure stays fixed at its last position; revealInner re-syncs on scroll.
 //
-// Zoom compensation: figure stays the same visual size regardless of pinch zoom.
-//   visualViewport.scale > 1 → zoomed in → divide CSS dimensions by scale.
-//
-// Hint shown once per session via sessionStorage.
+// Hint: on first mobile visit this session, show "drag to look, two fingers to
+//   scroll" at bottom-centre after 2 s. Fade in 1 s, hold 3 s, fade out 1 s.
+//   Stored in sessionStorage so it only shows once per session.
 
-const MOB = { IDLE: 0, PENDING: 1, DRAGGING: 2, TWO_FINGER: 3, COOLING: 4 };
-let mob_state        = MOB.IDLE;
-let mob_pendingTimer = null;
-let mob_coolingTimer = null;
-const mob_pos        = { x: 0, y: 0 };  // viewport coords of figure centre
-let mob_vpScale      = 1.0;              // current visual viewport zoom
-
-// Effective figure size: shrinks when zoomed in so it stays the same on screen
-function mob_effectiveSize() {
-  return { w: figW / mob_vpScale, h: FIG_H / mob_vpScale };
-}
-
-// Like moveReveal but uses zoom-corrected dimensions. Always syncs size too.
-function mob_moveReveal(clientX, clientY) {
-  const { w, h } = mob_effectiveSize();
-  const maskSize  = `${w}px ${h}px`;
-  layer3.style.width          = w + 'px';
-  layer3.style.height         = h + 'px';
-  layer3.style.webkitMaskSize = maskSize;
-  layer3.style.maskSize       = maskSize;
-  layer3.style.left = (clientX - w / 2) + 'px';
-  layer3.style.top  = (clientY - h / 2) + 'px';
-
-  const rect     = layer1.getBoundingClientRect();
-  const surfaceX = clientX - rect.left;
-  const surfaceY = clientY - rect.top;
-  revealInner.style.left = (-(surfaceX - w / 2)) + 'px';
-  revealInner.style.top  = (-(surfaceY - h / 2)) + 'px';
-
-  applyMemory(surfaceX, surfaceY);
-}
+const mob_pos = { x: 0, y: 0 };  // current viewport position of figure centre
 
 function mob_initPosition() {
   mob_pos.x = window.innerWidth  / 2;
   mob_pos.y = window.innerHeight / 2;
-  mob_moveReveal(mob_pos.x, mob_pos.y);
+  moveReveal(mob_pos.x, mob_pos.y);
 }
-
-// ── State transitions ──────────────────────────────────────────────────────
-
-function mob_enterTwoFinger() {
-  clearTimeout(mob_pendingTimer);
-  clearTimeout(mob_coolingTimer);
-  mob_pendingTimer = null;
-  mob_coolingTimer = null;
-  mob_state = MOB.TWO_FINGER;
-}
-
-function mob_enterCooling() {
-  mob_state = MOB.COOLING;
-  mob_coolingTimer = setTimeout(() => {
-    mob_state        = MOB.IDLE;
-    mob_coolingTimer = null;
-  }, 200);
-}
-
-// ── Touch handlers ─────────────────────────────────────────────────────────
 
 function mob_onTouchStart(e) {
-  if (e.touches.length >= 2) {
-    // Second finger arrived — enter two-finger mode, allow browser scroll/zoom
-    mob_enterTwoFinger();
-    return;
-  }
-
-  // Single finger
-  if (mob_state === MOB.TWO_FINGER || mob_state === MOB.COOLING) {
-    // Lockout: single finger ignored during and just after two-finger gesture.
-    // preventDefault so a stray finger doesn't trigger a browser scroll.
-    e.preventDefault();
-    return;
-  }
-
-  if (mob_state === MOB.IDLE) {
-    e.preventDefault();
-    mob_state = MOB.PENDING;
-    mob_pendingTimer = setTimeout(() => {
-      if (mob_state === MOB.PENDING) mob_state = MOB.DRAGGING;
-    }, 150);
-  }
+  if (e.touches.length !== 1) return;  // 2+ fingers → let browser handle scroll
+  e.preventDefault();
+  const t = e.touches[0];
+  mob_pos.x = t.clientX;
+  mob_pos.y = t.clientY;
+  moveReveal(mob_pos.x, mob_pos.y);
 }
 
 function mob_onTouchMove(e) {
-  if (e.touches.length >= 2) {
-    // Multi-finger move: enter two-finger, let browser handle scroll/zoom
-    if (mob_state !== MOB.TWO_FINGER) mob_enterTwoFinger();
-    return;
-  }
-
-  if (mob_state === MOB.DRAGGING) {
-    e.preventDefault();
-    mob_pos.x = e.touches[0].clientX;
-    mob_pos.y = e.touches[0].clientY;
-    mob_moveReveal(mob_pos.x, mob_pos.y);
-  } else if (mob_state === MOB.PENDING) {
-    // Hold scroll while 150 ms decision window is open
-    e.preventDefault();
-  }
-  // TWO_FINGER / COOLING / IDLE: don't preventDefault, don't move
+  if (e.touches.length !== 1) return;  // 2+ fingers → let browser scroll
+  e.preventDefault();
+  const t = e.touches[0];
+  mob_pos.x = t.clientX;
+  mob_pos.y = t.clientY;
+  moveReveal(mob_pos.x, mob_pos.y);
 }
 
-function mob_onTouchEnd(e) {
-  if (mob_state === MOB.TWO_FINGER) {
-    if (e.touches.length === 0) mob_enterCooling();
-    // If 1 finger remains after 2-finger gesture: stay in TWO_FINGER until
-    // all fingers lift, then enter COOLING.
-    return;
-  }
-
-  if (mob_state === MOB.COOLING) {
-    // All fingers lifted; cooldown already running — nothing to do
-    return;
-  }
-
-  if (e.touches.length === 0) {
-    clearTimeout(mob_pendingTimer);
-    mob_pendingTimer = null;
-    mob_state = MOB.IDLE;
-    // Figure stays at mob_pos — no hideReveal
-  }
+function mob_onTouchEnd() {
+  // Figure stays at mob_pos — no position change, no hideReveal.
 }
 
-// Re-sync reveal when page scrolls under the stationary figure
+// Re-sync reveal offset when the page scrolls under the stationary figure.
 function mob_onScroll() {
-  mob_moveReveal(mob_pos.x, mob_pos.y);
+  moveReveal(mob_pos.x, mob_pos.y);
 }
-
-// Zoom compensation via visualViewport API
-function mob_onViewportChange() {
-  if (!window.visualViewport) return;
-  const s = window.visualViewport.scale;
-  if (Math.abs(s - mob_vpScale) > 0.005) {
-    mob_vpScale = s;
-    mob_moveReveal(mob_pos.x, mob_pos.y);
-  }
-}
-
-// ── First-visit hint ───────────────────────────────────────────────────────
 
 function mob_showHint() {
   if (sessionStorage.getItem('mob_hint_shown')) return;
@@ -502,22 +395,15 @@ function mob_showHint() {
   }, 2000);
 }
 
-// ── Boot ───────────────────────────────────────────────────────────────────
-
 if ('ontouchstart' in window) {
-  // touchstart + touchmove non-passive so we can call preventDefault selectively
+  // touchstart and touchmove must be non-passive to call preventDefault.
   document.addEventListener('touchstart',  mob_onTouchStart, { passive: false });
   document.addEventListener('touchmove',   mob_onTouchMove,  { passive: false });
   document.addEventListener('touchend',    mob_onTouchEnd,   { passive: true });
   document.addEventListener('touchcancel', mob_onTouchEnd,   { passive: true });
   document.addEventListener('scroll',      mob_onScroll,     { passive: true });
 
-  if (window.visualViewport) {
-    window.visualViewport.addEventListener('resize', mob_onViewportChange);
-    window.visualViewport.addEventListener('scroll', mob_onViewportChange);
-  }
-
-  // Wait for figW to be set by initCursor (async image load)
+  // Place figure at centre once figW is available (initCursor is async).
   const mob_waitForFigW = setInterval(() => {
     if (figW > 0) {
       clearInterval(mob_waitForFigW);
