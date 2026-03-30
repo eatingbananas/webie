@@ -1,0 +1,12 @@
+/* ── walking figures (figures.js) ──────────────────────────────────────────
+   The figure uses position: fixed (viewport coords) so it has no layout
+   dependency on #main. No rules on #main are needed.
+   ─────────────────────────────────────────────────────────────────────── */
+
+/* Base class — dimensions and all mask values are set inline by figures.js
+   because they depend on computed pixel sizes at runtime. */
+.figure-walker {
+  position: fixed;
+  pointer-events: none;
+  /* no other rules needed here; JS writes everything else inline */
+}

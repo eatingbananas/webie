@@ -1,0 +1,124 @@
+{
+  "surface_width": 3000,
+  "surface_height": 2500,
+  "items": [
+    {
+      "id": "001",
+      "type": "project",
+      "title": "Marlborough Road",
+      "year": "2024",
+      "anchor": { "x": 200, "y": 280 },
+      "images": [
+        { "src": "WORKimages/2024_Marlborough_Road_1.jpg", "width": 300 },
+        { "src": "WORKimages/2024_Marlborough_Road_2.jpg", "width": 260 },
+        { "src": "WORKimages/2024_Marlborough_Road_3.jpg", "width": 220 }
+      ],
+      "text": "Marlborough Road, 2024"
+    },
+    {
+      "id": "002",
+      "type": "project",
+      "title": "Jake Zhang",
+      "year": "2026",
+      "anchor": { "x": 1050, "y": 220 },
+      "images": [
+        { "src": "WORKimages/2026_JakeZhang_1.jpg", "width": 310 },
+        { "src": "WORKimages/2026_JakeZhang_2.jpg", "width": 250 }
+      ],
+      "text": "Jake Zhang, 2026"
+    },
+    {
+      "id": "003",
+      "type": "loose",
+      "title": "Female Photographer",
+      "year": "2024",
+      "anchor": { "x": 1750, "y": 320 },
+      "images": [
+        { "src": "WORKimages/2024_Female_Photographer.jpg", "width": 225 }
+      ],
+      "text": null
+    },
+    {
+      "id": "004",
+      "type": "found",
+      "title": null,
+      "year": null,
+      "anchor": { "x": 2280, "y": 260 },
+      "images": [
+        { "src": "WORKimages/2024_DaivasCraft_1.jpeg", "width": 200 }
+      ],
+      "text": null
+    },
+    {
+      "id": "005",
+      "type": "video",
+      "title": "BirthLook Reveal",
+      "year": "2024",
+      "anchor": { "x": 2680, "y": 350 },
+      "images": [
+        { "src": "WORKimages/2024_Jack_bed_photo.png", "width": 240 }
+      ],
+      "text": "BirthLook Reveal, 2024"
+    },
+    {
+      "id": "006",
+      "type": "project",
+      "title": "Ben Brody",
+      "year": "2025",
+      "anchor": { "x": 180, "y": 1000 },
+      "images": [
+        { "src": "WORKimages/2025_Ben_Brody_1.jpg", "width": 300 },
+        { "src": "WORKimages/2025_Ben_Brody_2.jpg", "width": 255 }
+      ],
+      "text": "Ben Brody, 2025"
+    },
+    {
+      "id": "007",
+      "type": "project",
+      "title": "JO",
+      "year": "2025",
+      "anchor": { "x": 1050, "y": 1150 },
+      "images": [
+        { "src": "WORKimages/2025_JO_1.jpg", "width": 270 },
+        { "src": "WORKimages/2025_JO_2.jpg", "width": 230 }
+      ],
+      "text": "JO, 2025"
+    },
+    {
+      "id": "008",
+      "type": "loose",
+      "title": "Body Terrace",
+      "year": "2024",
+      "anchor": { "x": 1820, "y": 1050 },
+      "images": [
+        { "src": "WORKimages/2024_Body_Terrace.jpg", "width": 270 }
+      ],
+      "text": null
+    },
+    {
+      "id": "009",
+      "type": "found",
+      "title": null,
+      "year": null,
+      "anchor": { "x": 2380, "y": 950 },
+      "images": [
+        { "src": "WORKimages/2024_Safety_1.jpg", "width": 210 },
+        { "src": "WORKimages/2024_Safety_2.jpg", "width": 195 }
+      ],
+      "text": null
+    },
+    {
+      "id": "010",
+      "type": "project",
+      "title": "Fishy",
+      "year": "2024",
+      "anchor": { "x": 200, "y": 1650 },
+      "images": [
+        { "src": "WORKimages/2024_Fishy_1.jpg", "width": 200 },
+        { "src": "WORKimages/2024_Fishy_2.jpg", "width": 185 },
+        { "src": "WORKimages/2024_Fishy_3.jpg", "width": 190 }
+      ],
+      "text": "Fishy, 2024"
+    }
+  ]
+}
