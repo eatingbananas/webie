@@ -1,6 +1,6 @@
 {
-  "surface_width": 8000,
-  "surface_height": 6000,
+  "surface_width": 5400,
+  "surface_height": 3900,
   "items": [
     {
       "id": "001",
@@ -22,12 +22,12 @@
       "title": "Jake Zhang",
       "year": "2026",
       "images": [
-        { "src": "WORKimages/2026_JakeZhang_1.jpg",   "width": 310, "x": 1883, "y": 240 },
-        { "src": "WORKimages/2026_JakeZhang_2.jpg",   "width": 250, "x": 2364, "y": 115 },
-        { "src": "WORKimages/2026_JakeZhang_3.jpg",   "width": 230, "x": 1783, "y": 653 },
-        { "src": "WORKimages/2026_JakeZhang_4.jpg",   "width": 220, "x": 1411, "y": 386 },
-        { "src": "WORKimages/2026_Jake_Zhang_5.jpg",  "width": 215, "x": 2110, "y": 522 },
-        { "src": "WORKimages/2026_Jake_Zhang_6.jpg",  "width": 225, "x": 1600, "y": 130 }
+        { "src": "WORKimages/2026_JakeZhang_1.jpg",   "width": 305, "x": 1885, "y": 240 },
+        { "src": "WORKimages/2026_JakeZhang_2.jpg",   "width": 250, "x": 2287, "y": 137 },
+        { "src": "WORKimages/2026_JakeZhang_3.jpg",   "width": 230, "x": 2207, "y": 422 },
+        { "src": "WORKimages/2026_JakeZhang_4.jpg",   "width": 235, "x": 1411, "y": 386 },
+        { "src": "WORKimages/2026_Jake_Zhang_5.jpg",  "width": 220, "x": 2002, "y": 581 },
+        { "src": "WORKimages/2026_Jake_Zhang_6.jpg",  "width": 233, "x": 1600, "y": 130 }
       ],
       "text": "Jake Zhang, 2026"
     },
@@ -37,7 +37,7 @@
       "title": "Female Photographer",
       "year": "2024",
       "images": [
-        { "src": "WORKimages/2024_Female_Photographer.jpg", "width": 225, "x": 2694, "y": 646 }
+        { "src": "WORKimages/2024_Female_Photographer.jpg", "width": 360, "x": 2694, "y": 646 }
       ],
       "text": null
     },
@@ -47,7 +47,7 @@
       "title": "Daiva's Craft",
       "year": 2024,
       "images": [
-        { "src": "WORKimages/2024_DaivasCraft_1.jpeg", "width": 300, "x": 1168, "y": 967 }
+        { "src": "WORKimages/2024_DaivasCraft_1.jpeg", "width": 320, "x": 1168, "y": 967 }
       ],
       "text": "Daiva's Craft, 2024"
     },
@@ -57,7 +57,7 @@
       "title": "",
       "year": "2024",
       "images": [
-        { "src": "WORKimages/2024_Jack_bed_photo.png", "width": 240, "x": 2542, "y": 1139 }
+        { "src": "WORKimages/2024_Jack_bed_photo.png", "width": 280, "x": 2542, "y": 1139 }
       ],
       "text": ""
     },
@@ -99,8 +99,8 @@
       "title": "Safety Bag",
       "year": 2024,
       "images": [
-        { "src": "WORKimages/2024_Safety_1.jpg", "width": 210, "x": 955,  "y": 1861 },
-        { "src": "WORKimages/2024_Safety_2.jpg", "width": 195, "x": 1145, "y": 1721 }
+        { "src": "WORKimages/2024_Safety_1.jpg", "width": 240, "x": 955,  "y": 1861 },
+        { "src": "WORKimages/2024_Safety_2.jpg", "width": 220, "x": 1145, "y": 1721 }
       ],
       "text": "Poppy Morgan's Safety Belts, 2024"
     },
@@ -134,9 +134,9 @@
       "title": "ScreenShotThis",
       "year": "2025",
       "images": [
-        { "src": "WORKimages/2025_ScreenShotThis_1.jpg",   "width": 208, "x": 3007, "y": 1776 },
-        { "src": "WORKimages/2025_ScreenShotThis_2.jpg",   "width": 196, "x": 3445, "y": 1934 },
-        { "src": "WORKimages/2025_ScreenShotThis_Gif.gif", "width": 196, "x": 3180, "y": 2018 }
+        { "src": "WORKimages/2025_ScreenShotThis_1.jpg",   "width": 208, "x": 2977, "y": 1776 },
+        { "src": "WORKimages/2025_ScreenShotThis_2.jpg",   "width": 196, "x": 3364, "y": 1607 },
+        { "src": "WORKimages/2025_ScreenShotThis_Gif.gif", "width": 196, "x": 3218, "y": 1879 }
       ],
       "text": "Screen Shot This, 2025"
     },
@@ -169,10 +169,36 @@
         { "src": "WORKimages/2024_Communistagram.mov", "width": 600, "x": 428, "y": 2826 }
       ],
       "text": "Communistagram, 2024"
+    },
+    {
+      "id": "017",
+      "type": "video",
+      "title": "Birthlook Reveal",
+      "year": "2025",
+      "images": [
+        { "src": "WORKimages/2025_BirthLookReveal.mov", "width": 500, "x": 3425, "y": 188 },
+        { "src": "WORKimages/2025_Birthlook_1.jpeg", "width": 200, "x": 4302, "y": 444 },
+        { "src": "WORKimages/2025_Birthlook_2.jpeg", "width": 205, "x": 4113, "y": 753},
+        { "src": "WORKimages/2025_Birthlook_3.jpeg", "width": 160, "x": 4467, "y": 707}
+      ],
+      "text": "Birthlook Reveal,2025"
+    },
+    {
+      "id": "018",
+      "type": "project",
+      "title": "Oscar Ouyang SS26 BTS for iD",
+      "year": "2026",
+      "images": [
+        { "src": "WORKimages/2025_Ouyang_ss26_bts_hy-1.jpg", "width": 220, "x": 3952, "y": 1114 },
+        { "src": "WORKimages/2025_Ouyang_ss26_bts_hy-2.jpg", "width": 210, "x": 4255, "y": 1179},
+        { "src": "WORKimages/2025_Ouyang_ss26_bts_hy-5.jpg", "width": 180, "x": 3765, "y": 1350}
+      ],
+      "text": "Oscar Ouyang SS26 BTS for i-D, 2025",
+      "link": { "href": "https://i-d.co/article/oscar-ouyang-spring-2026/", "x": 3966, "y": 1600 }
     }
   ],
   "texts": [
-    { "id": "t001", "content": "An iPhone 13 phone size flip book. Flippable both ways. Flip content contains: a scroll through 10 self made instagram reels in 5 seconds; a future alphabet definition, and many others. It's a book you can just flip through, but you can also stop and read every page. This is my comment on the speed of consumption of image books these days, how it is being reshaped by our interaction with phones. Side by side I hope to discuss about reproduction, orginality and lineality, that exist in these two mediums. Together I bring them into this fragile object that gets reshaped and reformed by every single flip. Book launch event at Waste Store London, 10th Dec, 2024", "x": 2750, "y": 2150, "style": "small" },
+    { "id": "t001", "content": "An iPhone 13 phone size flip book. Flippable both ways. Flip content contains: a scroll through 10 self made instagram reels in 5 seconds; a future alphabet definition, and many others. It's a book you can just flip through, but you can also stop and read every page. This is my comment on the speed of consumption of image books these days, how it is being reshaped by our interaction with phones. Side by side I hope to discuss about reproduction, orginality and lineality, that exist in these two mediums. Together I bring them into this fragile object that gets reshaped and reformed by every single flip. Book launch event at Waste Store London, 10th Dec, 2024", "x": 3146, "y": 2292, "style": "small" },
     { "id": "t002", "content": "",           "x": 1800, "y": 500,  "style": "large"  },
     { "id": "t003", "content": "",  "x": 2500, "y": 1900, "style": "medium" }
   ]
