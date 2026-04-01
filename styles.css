@@ -8,37 +8,41 @@ html, body {
   width: 100%;
   height: 100%;
   overflow: scroll;
-  background: #e8e4de;
+  background: #f0eeeb;
   cursor: none;
+}
+
+@media (pointer: coarse) {
+  html, body { cursor: auto; }
 }
 
 #stage {
   position: relative;
-  width: 3000px;
-  height: 2500px;
+  width: 8000px;
+  height: 6000px;
+  background: #f0eeeb;
 }
 
 #layer1 {
   position: absolute;
   top: 0;
   left: 0;
-  width: 3000px;
-  height: 2500px;
-  background: #f8e8f5;
+  width: 8000px;
+  height: 6000px;
+  background: #f0eeeb;
 }
 
 #layer1 img {
   position: absolute;
   display: block;
-  object-fit: cover;
 }
 
 #layer2 {
   position: absolute;
   top: 0;
   left: 0;
-  width: 3000px;
-  height: 2500px;
+  width: 8000px;
+  height: 6000px;
   z-index: 2;
 }
 
