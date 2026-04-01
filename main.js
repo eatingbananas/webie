@@ -1049,11 +1049,24 @@ if ('ontouchstart' in window) {
   // Enable pointer events on layer3 so it can receive touch.
   layer3.style.pointerEvents = 'auto';
 
+  function _overGuestWeb(clientX, clientY) {
+    const gwEl = document.getElementById('guestweb-area');
+    if (!gwEl) return false;
+    const r = gwEl.getBoundingClientRect();
+    return clientX >= r.left && clientX <= r.right && clientY >= r.top && clientY <= r.bottom;
+  }
+
   // Touchstart on layer3 only — drag the figure. Scrolling is unaffected elsewhere.
   layer3.addEventListener('touchstart', e => {
     if (e.touches.length !== 1) return;
-    e.preventDefault();  // block scroll only while dragging the figure
     const t = e.touches[0];
+    if (_overGuestWeb(t.clientX, t.clientY)) {
+      // Touch is on the GuestWeb form — let the browser handle it normally.
+      // Set pointer-events:none so the tap falls through to the inputs/links below.
+      layer3.style.pointerEvents = 'none';
+      return;
+    }
+    e.preventDefault();  // block scroll only while dragging the figure
     mob_pos.x = t.clientX;
     mob_pos.y = t.clientY;
     moveReveal(mob_pos.x, mob_pos.y);
@@ -1061,12 +1074,23 @@ if ('ontouchstart' in window) {
 
   layer3.addEventListener('touchmove', e => {
     if (e.touches.length !== 1) return;
-    e.preventDefault();
     const t = e.touches[0];
+    if (_overGuestWeb(t.clientX, t.clientY)) return;
+    e.preventDefault();
     mob_pos.x = t.clientX;
     mob_pos.y = t.clientY;
     moveReveal(mob_pos.x, mob_pos.y);
   }, { passive: false });
+
+  // Restore layer3 pointer-events when a touch begins outside guestweb-area.
+  document.addEventListener('touchstart', e => {
+    if (layer3.style.pointerEvents === 'none') {
+      const t = e.touches[0];
+      if (!_overGuestWeb(t.clientX, t.clientY)) {
+        layer3.style.pointerEvents = 'auto';
+      }
+    }
+  }, { passive: true, capture: true });
 
   // touchend: figure stays where released — no action needed.
 
