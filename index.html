@@ -34,35 +34,45 @@
     const GW_X = 4000;
     const GW_Y = 2000;
 
+    const GW_SCALE           = 1.5;  // ← scale the entire GuestWeb block (form + entries)
+    const GW_DISCLAIMER_SIZE = 10; // ← "by signing..." font size only
+
     // Expose coords so the main.js GuestWeb link can scroll to this position.
     document.body.dataset.gwX = GW_X;
     document.body.dataset.gwY = GW_Y;
 
     const layer2 = document.getElementById('layer2');
 
-    const s = 'font-family:"Lucida Grande",Arial,sans-serif;font-size:11px;color:#333;';
+    const s      = "font-family:'Lucida Grande',Arial,sans-serif;font-size:11px;color:#333;";
+    const sSmall = "font-family:'Lucida Grande',Arial,sans-serif;font-size:" + GW_DISCLAIMER_SIZE + "px;color:#888;";
+
+    // Wrapper holds form + entries so GW_SCALE transforms everything together
+    const gwWrapper = document.createElement('div');
+    gwWrapper.id = 'guestweb-area';
+    Object.assign(gwWrapper.style, {
+      position:        'absolute',
+      left:            GW_X + 'px',
+      top:             GW_Y + 'px',
+      zIndex:          '5',
+      transformOrigin: 'top left',
+      transform:       'scale(' + GW_SCALE + ')',
+    });
 
     const formEl = document.createElement('div');
-    formEl.id = 'guestweb-area';
-    Object.assign(formEl.style, {
-      position: 'absolute',
-      left:     GW_X + 'px',
-      top:      GW_Y + 'px',
-      zIndex:   '5',
-      width:    '190px',
-    });
+    Object.assign(formEl.style, { position: 'absolute', left: '0', top: '0', width: '190px' });
     formEl.innerHTML =
       '<div style="' + s + 'margin-bottom:6px;">GuestWeb</div>' +
       '<input id="gw-name" type="text" placeholder="name or alias" maxlength="60" style="display:block;width:100%;margin-bottom:4px;box-sizing:border-box;' + s + '">' +
       '<input id="gw-site" type="text" placeholder="your site, optional" maxlength="200" style="display:block;width:100%;margin-bottom:6px;box-sizing:border-box;' + s + '">' +
       '<button id="gw-submit" style="' + s + 'cursor:pointer;">sign</button>' +
-      '<div style="' + s + 'margin-top:6px;color:#888;">by signing, your name and link are visible to visitors</div>';
+      '<div style="' + sSmall + 'margin-top:6px;">by signing, your name and link are visible to visitors</div>';
 
-    layer2.appendChild(formEl);
+    gwWrapper.appendChild(formEl);
+    layer2.appendChild(gwWrapper);
 
-    // Entries scatter below the form
-    const BASE_X = GW_X;
-    const BASE_Y = GW_Y + 120;
+    // Entries scatter below the form — positions are relative to gwWrapper
+    const BASE_X = 0;
+    const BASE_Y = 120;
     let entryCount = 0;
 
     // Seeded RNG (xorshift32)
@@ -82,8 +92,7 @@
         position:   'absolute',
         left:       ex + 'px',
         top:        ey + 'px',
-        zIndex:     '5',
-        fontFamily: '"Lucida Grande", Arial, sans-serif',
+        fontFamily: "'Lucida Grande', Arial, sans-serif",
         fontSize:   '11px',
         color:      '#333',
         whiteSpace: 'nowrap',
@@ -102,7 +111,7 @@
         el.textContent = name;
       }
 
-      layer2.appendChild(el);
+      gwWrapper.appendChild(el);
     }
 
     // Load existing + live new entries
