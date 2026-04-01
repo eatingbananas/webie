@@ -409,11 +409,31 @@ function strToSeed(str) {
   return h;
 }
 
+// ── Mobile layout detection ───────────────────────────────────────────────────
+const IS_MOBILE = window.innerWidth < 768;
+// Desktop surface: 8000×6000. Mobile surface: 2000×4000.
+// Remap positions proportionally and scale widths down by 30%.
+const MOB_SURF_W = 2000;
+const MOB_SURF_H = 4000;
+const DESK_SURF_W = 8000;
+const DESK_SURF_H = 6000;
+
+function mobilizeImage(img) {
+  if (!IS_MOBILE) return img;
+  return {
+    src:   img.src,
+    width: Math.round(img.width * 0.7),
+    x:     Math.round(img.x * (MOB_SURF_W / DESK_SURF_W)),
+    y:     Math.round(img.y * (MOB_SURF_H / DESK_SURF_H)),
+  };
+}
+
 // ── Place one item ────────────────────────────────────────────────────────────
 function placeItem(item) {
   const rand = makeRand(strToSeed(item.id));
   // Positions come directly from x,y on each image entry in the JSON.
-  const placed = item.images.map(img => ({
+  // On mobile, positions and widths are remapped to the narrower surface.
+  const placed = item.images.map(img => mobilizeImage({
     src: img.src, width: img.width, x: img.x, y: img.y
   }));
 
@@ -517,10 +537,10 @@ fetch('content.json')
     return r.json();
   })
   .then(data => {
-    const w = data.surface_width  + 'px';
-    const h = data.surface_height + 'px';
-    surfW = data.surface_width;
-    surfH = data.surface_height;
+    surfW = IS_MOBILE ? MOB_SURF_W : data.surface_width;
+    surfH = IS_MOBILE ? MOB_SURF_H : data.surface_height;
+    const w = surfW + 'px';
+    const h = surfH + 'px';
 
     for (const el of [stage, layer1, layer2]) {
       el.style.width  = w;
@@ -552,10 +572,12 @@ fetch('content.json')
       const el = document.createElement('div');
       el.className   = 'surface-text';
       el.textContent = t.content;
+      const tx = IS_MOBILE ? Math.round(t.x * (MOB_SURF_W / DESK_SURF_W)) : t.x;
+      const ty = IS_MOBILE ? Math.round(t.y * (MOB_SURF_H / DESK_SURF_H)) : t.y;
       Object.assign(el.style, {
         position:   'absolute',
-        left:       t.x + 'px',
-        top:        t.y + 'px',
+        left:       tx + 'px',
+        top:        ty + 'px',
         fontFamily: '"Lucida Grande", Arial, sans-serif',
         fontSize:   fontSizes[t.style] || '11px',
         color:       '#333',
@@ -697,28 +719,6 @@ function mob_initPosition() {
   moveReveal(mob_pos.x, mob_pos.y);
 }
 
-function mob_onTouchStart(e) {
-  if (e.touches.length !== 1) return;  // 2+ fingers → let browser handle scroll
-  e.preventDefault();
-  const t = e.touches[0];
-  mob_pos.x = t.clientX;
-  mob_pos.y = t.clientY;
-  moveReveal(mob_pos.x, mob_pos.y);
-}
-
-function mob_onTouchMove(e) {
-  if (e.touches.length !== 1) return;  // 2+ fingers → let browser scroll
-  e.preventDefault();
-  const t = e.touches[0];
-  mob_pos.x = t.clientX;
-  mob_pos.y = t.clientY;
-  moveReveal(mob_pos.x, mob_pos.y);
-}
-
-function mob_onTouchEnd() {
-  // Figure stays at mob_pos — no position change, no hideReveal.
-}
-
 // Re-sync reveal offset when the page scrolls under the stationary figure.
 function mob_onScroll() {
   moveReveal(mob_pos.x, mob_pos.y);
@@ -729,7 +729,7 @@ function mob_showHint() {
   sessionStorage.setItem('mob_hint_shown', '1');
 
   const hint = document.createElement('div');
-  hint.textContent = 'drag to look, two fingers to scroll';
+  hint.textContent = 'drag figure to look, scroll to navigate';
   Object.assign(hint.style, {
     position:      'fixed',
     bottom:        '32px',
@@ -756,12 +756,31 @@ function mob_showHint() {
 }
 
 if ('ontouchstart' in window) {
-  // touchstart and touchmove must be non-passive to call preventDefault.
-  document.addEventListener('touchstart',  mob_onTouchStart, { passive: false });
-  document.addEventListener('touchmove',   mob_onTouchMove,  { passive: false });
-  document.addEventListener('touchend',    mob_onTouchEnd,   { passive: true });
-  document.addEventListener('touchcancel', mob_onTouchEnd,   { passive: true });
-  document.addEventListener('scroll',      mob_onScroll,     { passive: true });
+  // Enable pointer events on layer3 so it can receive touch.
+  layer3.style.pointerEvents = 'auto';
+
+  // Touchstart on layer3 only — drag the figure. Scrolling is unaffected elsewhere.
+  layer3.addEventListener('touchstart', e => {
+    if (e.touches.length !== 1) return;
+    e.preventDefault();  // block scroll only while dragging the figure
+    const t = e.touches[0];
+    mob_pos.x = t.clientX;
+    mob_pos.y = t.clientY;
+    moveReveal(mob_pos.x, mob_pos.y);
+  }, { passive: false });
+
+  layer3.addEventListener('touchmove', e => {
+    if (e.touches.length !== 1) return;
+    e.preventDefault();
+    const t = e.touches[0];
+    mob_pos.x = t.clientX;
+    mob_pos.y = t.clientY;
+    moveReveal(mob_pos.x, mob_pos.y);
+  }, { passive: false });
+
+  // touchend: figure stays where released — no action needed.
+
+  document.addEventListener('scroll', mob_onScroll, { passive: true });
 
   // Place figure at centre once figW is available (initCursor is async).
   const mob_waitForFigW = setInterval(() => {
