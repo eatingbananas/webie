@@ -926,6 +926,12 @@ document.addEventListener('keydown', e => {
 // ── ZOOM (non-Safari only) ────────────────────────────────────────────────────
 const _isSafari = /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent);
 
+function getMinZoom() {
+  const minW = window.innerWidth  / surfW;
+  const minH = window.innerHeight / surfH;
+  return Math.max(minW, minH);
+}
+
 if (!_isSafari) {
   document.addEventListener('wheel', function(e) {
     if (!e.ctrlKey) return;
@@ -933,7 +939,7 @@ if (!_isSafari) {
 
     const oldZoom = parseFloat(stage.style.zoom) || 1;
     const delta   = e.deltaY > 0 ? -0.05 : 0.05;
-    const newZoom = Math.min(3, Math.max(0.3, oldZoom + delta));
+    const newZoom = Math.min(3, Math.max(getMinZoom(), oldZoom + delta));
 
     const rect     = stage.getBoundingClientRect();
     const surfaceX = (e.clientX - rect.left) / oldZoom;
@@ -948,6 +954,12 @@ if (!_isSafari) {
       surfaceY * newZoom - e.clientY
     );
   }, { passive: false });
+
+  window.addEventListener('resize', function() {
+    const min = getMinZoom();
+    const cur = parseFloat(stage.style.zoom) || 1;
+    if (cur < min) stage.style.zoom = min;
+  });
 }
 // ── END ZOOM ──────────────────────────────────────────────────────────────────
 
