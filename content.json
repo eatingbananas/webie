@@ -1,17 +1,18 @@
 {
-  "surface_width": 3000,
-  "surface_height": 2500,
+  "surface_width": 8000,
+  "surface_height": 6000,
   "items": [
     {
       "id": "001",
       "type": "project",
       "title": "Marlborough Road",
       "year": "2024",
-      "anchor": { "x": 200, "y": 280 },
       "images": [
-        { "src": "WORKimages/2024_Marlborough_Road_1.jpg", "width": 300 },
-        { "src": "WORKimages/2024_Marlborough_Road_2.jpg", "width": 260 },
-        { "src": "WORKimages/2024_Marlborough_Road_3.jpg", "width": 220 }
+        { "src": "WORKimages/2024_Marlborough_Road_1.jpg", "width": 300, "x": 434,  "y": 170 },
+        { "src": "WORKimages/2024_Marlborough_Road_2.jpg", "width": 260, "x": 932,  "y": 167 },
+        { "src": "WORKimages/2024_Marlborough_Road_3.jpg", "width": 220, "x": 470,  "y": 849 },
+        { "src": "WORKimages/2024_Marlborough_Road_4.jpg", "width": 240, "x": 78,   "y": 394 },
+        { "src": "WORKimages/2024_Marlborough_Road_5.jpg", "width": 210, "x": 826,  "y": 459 }
       ],
       "text": "Marlborough Road, 2024"
     },
@@ -20,10 +21,13 @@
       "type": "project",
       "title": "Jake Zhang",
       "year": "2026",
-      "anchor": { "x": 1050, "y": 220 },
       "images": [
-        { "src": "WORKimages/2026_JakeZhang_1.jpg", "width": 310 },
-        { "src": "WORKimages/2026_JakeZhang_2.jpg", "width": 250 }
+        { "src": "WORKimages/2026_JakeZhang_1.jpg",   "width": 310, "x": 1883, "y": 240 },
+        { "src": "WORKimages/2026_JakeZhang_2.jpg",   "width": 250, "x": 2364, "y": 115 },
+        { "src": "WORKimages/2026_JakeZhang_3.jpg",   "width": 230, "x": 1783, "y": 653 },
+        { "src": "WORKimages/2026_JakeZhang_4.jpg",   "width": 220, "x": 1411, "y": 386 },
+        { "src": "WORKimages/2026_Jake_Zhang_5.jpg",  "width": 215, "x": 2110, "y": 522 },
+        { "src": "WORKimages/2026_Jake_Zhang_6.jpg",  "width": 225, "x": 1600, "y": 130 }
       ],
       "text": "Jake Zhang, 2026"
     },
@@ -32,43 +36,39 @@
       "type": "loose",
       "title": "Female Photographer",
       "year": "2024",
-      "anchor": { "x": 1750, "y": 320 },
       "images": [
-        { "src": "WORKimages/2024_Female_Photographer.jpg", "width": 225 }
+        { "src": "WORKimages/2024_Female_Photographer.jpg", "width": 225, "x": 2694, "y": 646 }
       ],
       "text": null
     },
     {
       "id": "004",
       "type": "found",
-      "title": null,
-      "year": null,
-      "anchor": { "x": 2280, "y": 260 },
+      "title": "Daiva's Craft",
+      "year": 2024,
       "images": [
-        { "src": "WORKimages/2024_DaivasCraft_1.jpeg", "width": 200 }
+        { "src": "WORKimages/2024_DaivasCraft_1.jpeg", "width": 300, "x": 1168, "y": 967 }
       ],
-      "text": null
+      "text": "Daiva's Craft, 2024"
     },
     {
       "id": "005",
-      "type": "video",
-      "title": "BirthLook Reveal",
+      "type": "loose",
+      "title": "",
       "year": "2024",
-      "anchor": { "x": 2680, "y": 350 },
       "images": [
-        { "src": "WORKimages/2024_Jack_bed_photo.png", "width": 240 }
+        { "src": "WORKimages/2024_Jack_bed_photo.png", "width": 240, "x": 2542, "y": 1139 }
       ],
-      "text": "BirthLook Reveal, 2024"
+      "text": ""
     },
     {
       "id": "006",
       "type": "project",
       "title": "Ben Brody",
       "year": "2025",
-      "anchor": { "x": 180, "y": 1000 },
       "images": [
-        { "src": "WORKimages/2025_Ben_Brody_1.jpg", "width": 300 },
-        { "src": "WORKimages/2025_Ben_Brody_2.jpg", "width": 255 }
+        { "src": "WORKimages/2025_Ben_Brody_1.jpg", "width": 300, "x": 221,  "y": 1650 },
+        { "src": "WORKimages/2025_Ben_Brody_2.jpg", "width": 255, "x": 424,  "y": 1291 }
       ],
       "text": "Ben Brody, 2025"
     },
@@ -77,10 +77,9 @@
       "type": "project",
       "title": "JO",
       "year": "2025",
-      "anchor": { "x": 1050, "y": 1150 },
       "images": [
-        { "src": "WORKimages/2025_JO_1.jpg", "width": 270 },
-        { "src": "WORKimages/2025_JO_2.jpg", "width": 230 }
+        { "src": "WORKimages/2025_JO_1.jpg", "width": 270, "x": 2700, "y": 2868 },
+        { "src": "WORKimages/2025_JO_2.jpg", "width": 230, "x": 2995, "y": 2706 }
       ],
       "text": "JO, 2025"
     },
@@ -89,36 +88,92 @@
       "type": "loose",
       "title": "Body Terrace",
       "year": "2024",
-      "anchor": { "x": 1820, "y": 1050 },
       "images": [
-        { "src": "WORKimages/2024_Body_Terrace.jpg", "width": 270 }
+        { "src": "WORKimages/2024_Body_Terrace.jpg", "width": 270, "x": 3160, "y": 785 }
       ],
       "text": null
     },
     {
       "id": "009",
       "type": "found",
-      "title": null,
-      "year": null,
-      "anchor": { "x": 2380, "y": 950 },
+      "title": "Safety Bag",
+      "year": 2024,
       "images": [
-        { "src": "WORKimages/2024_Safety_1.jpg", "width": 210 },
-        { "src": "WORKimages/2024_Safety_2.jpg", "width": 195 }
+        { "src": "WORKimages/2024_Safety_1.jpg", "width": 210, "x": 955,  "y": 1861 },
+        { "src": "WORKimages/2024_Safety_2.jpg", "width": 195, "x": 1145, "y": 1721 }
       ],
-      "text": null
+      "text": "Poppy Morgan's Safety Belts, 2024"
     },
     {
       "id": "010",
       "type": "project",
       "title": "Fishy",
       "year": "2024",
-      "anchor": { "x": 200, "y": 1650 },
       "images": [
-        { "src": "WORKimages/2024_Fishy_1.jpg", "width": 200 },
-        { "src": "WORKimages/2024_Fishy_2.jpg", "width": 185 },
-        { "src": "WORKimages/2024_Fishy_3.jpg", "width": 190 }
+        { "src": "WORKimages/2024_Fishy_1.jpg", "width": 200, "x": 1939, "y": 1714 },
+        { "src": "WORKimages/2024_Fishy_2.jpg", "width": 185, "x": 2432, "y": 2082 },
+        { "src": "WORKimages/2024_Fishy_3.jpg", "width": 190, "x": 2200, "y": 2322 },
+        { "src": "WORKimages/2024_Fishy_4.jpg", "width": 195, "x": 1991, "y": 2018 },
+        { "src": "WORKimages/2024_Fishy_5.jpg", "width": 185, "x": 2197, "y": 1857 }
       ],
       "text": "Fishy, 2024"
+    },
+    {
+      "id": "011",
+      "type": "project",
+      "title": "Main Cut",
+      "year": "2023",
+      "images": [
+        { "src": "WORKimages/2023_Main_cut.jpg", "width": 320, "x": 380, "y": 2037 }
+      ],
+      "text": "Main Cuts, 2023"
+    },
+    {
+      "id": "012",
+      "type": "project",
+      "title": "ScreenShotThis",
+      "year": "2025",
+      "images": [
+        { "src": "WORKimages/2025_ScreenShotThis_1.jpg",   "width": 208, "x": 3007, "y": 1776 },
+        { "src": "WORKimages/2025_ScreenShotThis_2.jpg",   "width": 196, "x": 3445, "y": 1934 },
+        { "src": "WORKimages/2025_ScreenShotThis_Gif.gif", "width": 196, "x": 3180, "y": 2018 }
+      ],
+      "text": "Screen Shot This, 2025"
+    },
+    {
+      "id": "013",
+      "type": "project",
+      "title": "Car Nour",
+      "year": "2026",
+      "images": [
+        { "src": "WORKimages/2026_Car_Nour.png", "width": 280, "x": 1405, "y": 2410 }
+      ],
+      "text": "Car Nour, 2026"
+    },
+    {
+      "id": "015",
+      "type": "video",
+      "title": "Chanel Window",
+      "year": "2025",
+      "images": [
+        { "src": "WORKimages/2025_Chanel_window.mov", "width": 300, "x": 1779, "y": 1278 }
+      ],
+      "text": "Chanel Window, 2025"
+    },
+    {
+      "id": "016",
+      "type": "video",
+      "title": "Communistagram",
+      "year": "2024",
+      "images": [
+        { "src": "WORKimages/2024_Communistagram.mov", "width": 600, "x": 428, "y": 2826 }
+      ],
+      "text": "Communistagram, 2024"
     }
+  ],
+  "texts": [
+    { "id": "t001", "content": "An iPhone 13 phone size flip book. Flippable both ways. Flip content contains: a scroll through 10 self made instagram reels in 5 seconds; a future alphabet definition, and many others. It's a book you can just flip through, but you can also stop and read every page. This is my comment on the speed of consumption of image books these days, how it is being reshaped by our interaction with phones. Side by side I hope to discuss about reproduction, orginality and lineality, that exist in these two mediums. Together I bring them into this fragile object that gets reshaped and reformed by every single flip. Book launch event at Waste Store London, 10th Dec, 2024", "x": 2750, "y": 2150, "style": "small" },
+    { "id": "t002", "content": "",           "x": 1800, "y": 500,  "style": "large"  },
+    { "id": "t003", "content": "",  "x": 2500, "y": 1900, "style": "medium" }
   ]
 }
