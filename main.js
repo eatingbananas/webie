@@ -300,6 +300,27 @@ function waitResolveAndCache() {
       surfW / 2 - window.innerWidth  / 2,
       surfH / 2 - window.innerHeight / 2
     );
+
+    // ── Mobile width clamp ───────────────────────────────────────────────────
+    // Only the stage (the scroll container) is narrowed — layers, canvas, and
+    // the image cache keep their full computed dimensions so rendering is
+    // unaffected. overflow-x:hidden on stage prevents scrolling past bx1.
+    if (IS_MOBILE) {
+      const narrowW = Math.round(bx1 + 80);
+      stage.style.width     = narrowW + 'px';
+      stage.style.overflowX = 'hidden';
+
+      // Reposition GuestWeb (created by the module in index.html) to fit
+      // within the narrowed canvas.
+      const _posGW = () => {
+        const gwEl = document.getElementById('guestweb-area');
+        if (!gwEl) return;
+        gwEl.style.left = Math.round(4000 * MOB_X_SCALE) + 'px';
+        gwEl.style.top  = Math.round(2000 * MOB_Y_SCALE) + 'px';
+      };
+      setTimeout(_posGW, 0);
+      setTimeout(_posGW, 600);  // retry after Firebase entries may have shifted layout
+    }
   }
 
   if (pending === 0) { finish(); return; }
@@ -436,16 +457,27 @@ function raggedWrap(content, textId, maxLines) {
 }
 
 // ── Mobile layout detection ───────────────────────────────────────────────────
-const IS_MOBILE = window.innerWidth < 768;
-// Desktop surface: 8000×6000. Mobile surface: 2000×4000.
-// Remap positions proportionally and scale widths down by 30%.
+// Add ?mob=1 to the URL on desktop to preview the mobile layout and use
+// the P-key drag editor to manually set mobile positions.
+const IS_MOBILE = window.innerWidth < 768 ||
+  new URLSearchParams(window.location.search).has('mob');
+// Mobile surface dimensions.
 const MOB_SURF_W = 2000;
 const MOB_SURF_H = 4000;
-const DESK_SURF_W = 8000;
-const DESK_SURF_H = 6000;
+
+// Scale factors — set in the fetch handler once data.surface_width/height are known.
+// mobilizeImage() uses these to remap desktop coordinates to mobile space.
+let MOB_X_SCALE = 1;
+let MOB_Y_SCALE = 1;
 
 function mobilizeImage(img) {
-  return img;
+  if (!IS_MOBILE) return img;
+  return {
+    src:   img.src,
+    width: Math.max(60, Math.round(img.width * MOB_X_SCALE)),
+    x:     Math.round(img.x * MOB_X_SCALE),
+    y:     Math.round(img.y * MOB_Y_SCALE),
+  };
 }
 
 // ── Place one item ────────────────────────────────────────────────────────────
@@ -709,8 +741,8 @@ function placeItem(item) {
     allLabels.push({ el, itemId: item.id });
 
     if (item.link) {
-      const lx = IS_MOBILE ? Math.round(item.link.x * (MOB_SURF_W / DESK_SURF_W)) : item.link.x;
-      const ly = IS_MOBILE ? Math.round(item.link.y * (MOB_SURF_H / DESK_SURF_H)) : item.link.y;
+      const lx = IS_MOBILE ? Math.round(item.link.x * MOB_X_SCALE) : item.link.x;
+      const ly = IS_MOBILE ? Math.round(item.link.y * MOB_Y_SCALE) : item.link.y;
       const linkEl = document.createElement('a');
       linkEl.href        = item.link.href;
       linkEl.target      = '_blank';
@@ -799,6 +831,10 @@ fetch('content.json')
     return r.json();
   })
   .then(data => {
+    if (IS_MOBILE) {
+      MOB_X_SCALE = MOB_SURF_W / data.surface_width;
+      MOB_Y_SCALE = MOB_SURF_H / data.surface_height;
+    }
     surfW = IS_MOBILE ? MOB_SURF_W : data.surface_width;
     surfH = IS_MOBILE ? MOB_SURF_H : data.surface_height;
     const w = surfW + 'px';
@@ -840,8 +876,8 @@ fetch('content.json')
       } else {
         el.textContent = t.content;
       }
-      const tx = IS_MOBILE ? Math.round(t.x * (MOB_SURF_W / DESK_SURF_W)) : t.x;
-      const ty = IS_MOBILE ? Math.round(t.y * (MOB_SURF_H / DESK_SURF_H)) : t.y;
+      const tx = IS_MOBILE ? Math.round(t.x * MOB_X_SCALE) : t.x;
+      const ty = IS_MOBILE ? Math.round(t.y * MOB_Y_SCALE) : t.y;
       Object.assign(el.style, {
         position:      'absolute',
         left:          tx + 'px',
@@ -1015,7 +1051,6 @@ function mob_onScroll() {
 
 function mob_showHint() {
   if (sessionStorage.getItem('mob_hint_shown')) return;
-  sessionStorage.setItem('mob_hint_shown', '1');
 
   const hint = document.createElement('div');
   hint.innerHTML = 'drag figure to look, scroll to navigate<br><span id="mob-hint-pc">or experience differently on PC...</span>';
@@ -1035,8 +1070,8 @@ function mob_showHint() {
   });
   document.body.appendChild(hint);
 
-
   setTimeout(() => {
+    sessionStorage.setItem('mob_hint_shown', '1');
     hint.style.opacity = '1';
     setTimeout(() => {
       hint.style.opacity = '0';
@@ -1101,9 +1136,12 @@ if ('ontouchstart' in window) {
     if (figW > 0) {
       clearInterval(mob_waitForFigW);
       mob_initPosition();
-      mob_showHint();
     }
   }, 50);
+
+  // Show hint immediately (it has its own 2 s internal delay).
+  // Decoupled from figW so it fires even if the figure image is slow to load.
+  mob_showHint();
 }
 // ── END MOBILE TOUCH FEATURE ─────────────────────────────────────────────────
 
@@ -1355,4 +1393,3 @@ if (_isSafari) {
   }, { passive: false });
 }
 // ── END ZOOM ──────────────────────────────────────────────────────────────────
-
