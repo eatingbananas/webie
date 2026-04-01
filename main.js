@@ -1024,7 +1024,7 @@ function mob_showHint() {
   sessionStorage.setItem('mob_hint_shown', '1');
 
   const hint = document.createElement('div');
-  hint.textContent = 'drag figure to look, scroll to navigate';
+  hint.innerHTML = 'drag figure to look, scroll to navigate<br><span id="mob-hint-pc">or experience differently on PC...</span>';
   Object.assign(hint.style, {
     position:      'fixed',
     bottom:        '32px',
@@ -1037,9 +1037,18 @@ function mob_showHint() {
     transition:    'opacity 1s ease',
     zIndex:        '100',
     pointerEvents: 'none',
-    whiteSpace:    'nowrap',
+    textAlign:     'center',
   });
   document.body.appendChild(hint);
+
+  // Add blink keyframes once
+  if (!document.getElementById('mob-hint-style')) {
+    const styleEl = document.createElement('style');
+    styleEl.id = 'mob-hint-style';
+    styleEl.textContent = '@keyframes mob-gentle-blink { 0%,100%{opacity:1} 50%{opacity:0.25} }' +
+      ' #mob-hint-pc { animation: mob-gentle-blink 2.4s ease-in-out infinite; display:inline-block; }';
+    document.head.appendChild(styleEl);
+  }
 
   setTimeout(() => {
     hint.style.opacity = '1';
