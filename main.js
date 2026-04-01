@@ -61,6 +61,8 @@ const erosionCanvas = document.createElement('canvas');
 
 const allPlaced = [];  // { src, x, y, width, itemId, l1El, riEl }
 const allLabels = [];  // { el, itemId }
+const allTexts  = [];  // { el, textId }
+const viewRects = new Set();  // active video view regions { x, y, w, h }
 
 function buildImageCache(eW, eH) {
   const temp    = document.createElement('canvas');
@@ -365,6 +367,11 @@ function drawFrost() {
   frostCtx.globalCompositeOperation = 'destination-out';
   frostCtx.drawImage(erosionCanvas, 0, 0);
   frostCtx.globalCompositeOperation = 'source-over';
+
+  // Clear video view rects completely — same effect as silhouette cursor reveal.
+  for (const r of viewRects) {
+    frostCtx.clearRect(r.x * MEM_SCALE, r.y * MEM_SCALE, r.w * MEM_SCALE, r.h * MEM_SCALE);
+  }
 }
 
 function restoreLoop(now) {
@@ -407,6 +414,25 @@ function strToSeed(str) {
     h = (Math.imul(h, 33) ^ str.charCodeAt(i)) >>> 0;
   }
   return h;
+}
+
+// Seeded ragged wrap — splits text into at most maxLines lines with random
+// word counts per line, giving an uneven right edge.
+function raggedWrap(content, textId, maxLines) {
+  const rand  = makeRand(strToSeed(textId));
+  const words = content.split(' ');
+  const lines = [];
+  let rem = words.slice();
+  for (let i = 0; i < maxLines - 1 && rem.length > 0; i++) {
+    const linesLeft = maxLines - i;
+    const avg  = rem.length / linesLeft;
+    const minW = Math.max(1, Math.floor(avg * 0.65));
+    const maxW = Math.ceil(avg * 1.35);
+    const count = Math.min(Math.round(rand(minW, maxW)), rem.length - (linesLeft - 1));
+    lines.push(rem.splice(0, count).join(' '));
+  }
+  if (rem.length > 0) lines.push(rem.join(' '));
+  return lines.join('<br>');
 }
 
 // ── Mobile layout detection ───────────────────────────────────────────────────
@@ -476,32 +502,91 @@ function placeItem(item) {
     }
     allPlaced.push({ src, x, y, width, itemId: item.id, itemType: item.type || '', l1El, riEl });
 
-    // For videos: add a mute/unmute label above all layers including the silhouette.
+    // For videos: always-visible text buttons at random position + timeline at bottom.
     if (isVideo) {
-      const muteBtn = document.createElement('div');
-      muteBtn.textContent = 'unmute';
-      Object.assign(muteBtn.style, {
+      function fmtTime(s) {
+        if (!isFinite(s) || isNaN(s)) return '0:00';
+        const m = Math.floor(s / 60);
+        const sec = Math.floor(s % 60);
+        return m + ':' + (sec < 10 ? '0' : '') + sec;
+      }
+
+      const btnStyle = {
         position:      'absolute',
-        left:          x + 'px',
-        top:           (y + 20) + 'px',
         fontFamily:    '"Lucida Grande", Verdana, Geneva, sans-serif',
-        fontSize:      '11px',
+        fontSize:      '10px',
         color:         '#333',
         cursor:        'pointer',
-        pointerEvents: 'auto',
         userSelect:    'none',
-        zIndex:        '10',
+        zIndex:        '11',
+        pointerEvents: 'auto',
+        padding:       '10px 14px',
+        margin:        '-10px -14px',
+      };
+
+      const btnY = Math.round(y + rand(10, 40));
+      const btnX = Math.round(x + rand(10, width * 0.4));
+      let btnOffX = 0;
+
+      function makeBtn(label) {
+        const el = document.createElement('div');
+        el.textContent = label;
+        Object.assign(el.style, btnStyle);
+        el.style.left = (btnX + btnOffX) + 'px';
+        el.style.top  = btnY + 'px';
+        btnOffX += 70;
+        stage.appendChild(el);
+        return el;
+      }
+
+      // Play / pause
+      const playBtn = makeBtn('pause');
+      playBtn.addEventListener('click', () => {
+        const v1 = /** @type {HTMLVideoElement} */ (l1El);
+        const v2 = /** @type {HTMLVideoElement} */ (riEl);
+        if (v1.paused) {
+          v1.play().catch(() => {});
+          v2.play().catch(() => {});
+          playBtn.textContent = 'pause';
+        } else {
+          v1.pause();
+          v2.pause();
+          playBtn.textContent = 'play';
+        }
       });
+
+      // View
+      const viewBtn = makeBtn('view');
+      let _viewTimeout = null;
+      let _viewRect    = null;
+
+      function stopView() {
+        clearTimeout(_viewTimeout);
+        _viewTimeout = null;
+        if (_viewRect) { viewRects.delete(_viewRect); _viewRect = null; }
+        viewBtn.textContent = 'view';
+      }
+
+      viewBtn.addEventListener('click', () => {
+        if (_viewRect) { stopView(); return; }
+        viewBtn.textContent = 'hide';
+        const vidH = l1El.videoHeight > 0
+          ? Math.round(l1El.videoHeight * (width / l1El.videoWidth))
+          : Math.round(width * 0.75);
+        _viewRect = { x, y, w: width, h: vidH };
+        viewRects.add(_viewRect);
+        const dur = (l1El.duration && isFinite(l1El.duration))
+          ? l1El.duration * 1000 : 5000;
+        _viewTimeout = setTimeout(stopView, dur);
+      });
+
+      // Mute / unmute
+      const muteBtn = makeBtn('unmute');
+      muteBtn.className = 'mute-btn';
       muteBtn.addEventListener('click', () => {
-        const isNowMuted = l1El.muted;
-        if (isNowMuted) {
-          // Unmuting this video — mute all layer1 videos first.
-          layer1.querySelectorAll('video').forEach(v => {
-            v.muted = true;
-          });
-          stage.querySelectorAll('.mute-btn').forEach(b => {
-            b.textContent = 'unmute';
-          });
+        if (l1El.muted) {
+          layer1.querySelectorAll('video').forEach(v => { v.muted = true; });
+          stage.querySelectorAll('.mute-btn').forEach(b => { b.textContent = 'unmute'; });
           l1El.muted = false;
           muteBtn.textContent = 'mute';
         } else {
@@ -509,16 +594,117 @@ function placeItem(item) {
           muteBtn.textContent = 'unmute';
         }
       });
-      muteBtn.className = 'mute-btn';
-      stage.appendChild(muteBtn);
+
+      // ── Timeline: always visible, fixed at bottom of video ───────────────────
+      const timelineRow = document.createElement('div');
+      Object.assign(timelineRow.style, {
+        position:    'absolute',
+        left:        x + 'px',
+        top:         (y + Math.round(width * 0.75)) + 'px',  // updated on loadedmetadata
+        width:       width + 'px',
+        display:     'flex',
+        alignItems:  'center',
+        gap:         '5px',
+        boxSizing:   'border-box',
+        fontFamily:  '"Lucida Grande", Verdana, Geneva, sans-serif',
+        fontSize:    '10px',
+        color:       '#333',
+        userSelect:  'none',
+        zIndex:      '11',
+        pointerEvents: 'auto',
+      });
+      stage.appendChild(timelineRow);
+
+      const currentTimeEl = document.createElement('div');
+      currentTimeEl.textContent = '0:00';
+      Object.assign(currentTimeEl.style, { flexShrink: '0', minWidth: '26px' });
+      timelineRow.appendChild(currentTimeEl);
+
+      const timelineTrack = document.createElement('div');
+      Object.assign(timelineTrack.style, {
+        flex:         '1',
+        height:       '5px',
+        background:   'rgba(0,0,0,0.12)',
+        cursor:       'pointer',
+        position:     'relative',
+        borderRadius: '3px',
+      });
+      const timelineFill = document.createElement('div');
+      Object.assign(timelineFill.style, {
+        position:      'absolute',
+        left:          '0',
+        top:           '0',
+        height:        '100%',
+        width:         '0%',
+        background:    '#555',
+        borderRadius:  '3px',
+        pointerEvents: 'none',
+      });
+      timelineTrack.appendChild(timelineFill);
+      timelineRow.appendChild(timelineTrack);
+
+      const totalTimeEl = document.createElement('div');
+      totalTimeEl.textContent = '0:00';
+      Object.assign(totalTimeEl.style, { flexShrink: '0', minWidth: '26px' });
+      timelineRow.appendChild(totalTimeEl);
+
+      // Fix timeline position once actual video height is known
+      function updateTimelinePos() {
+        if (l1El.videoHeight > 0 && l1El.videoWidth > 0) {
+          const vidH = Math.round(l1El.videoHeight * (width / l1El.videoWidth));
+          timelineRow.style.top = (y + vidH + 4) + 'px';
+        }
+      }
+      l1El.addEventListener('loadedmetadata', () => {
+        updateTimelinePos();
+        totalTimeEl.textContent = fmtTime(l1El.duration);
+      });
+      if (l1El.readyState >= 1) updateTimelinePos();
+
+      // Scrub — keep _scrubbing true briefly after mouseup to absorb stray timeupdate
+      let _scrubbing = false;
+      let _scrubEndTimer = null;
+      function seekFromEvent(e) {
+        const rect = timelineTrack.getBoundingClientRect();
+        const pct  = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+        if (l1El.duration) {
+          const t = pct * l1El.duration;
+          l1El.currentTime = t;
+          riEl.currentTime = t;
+          timelineFill.style.width = (pct * 100) + '%';
+          currentTimeEl.textContent = fmtTime(t);
+        }
+      }
+      timelineTrack.addEventListener('mousedown', e => {
+        clearTimeout(_scrubEndTimer);
+        _scrubbing = true;
+        seekFromEvent(e);
+        const onMove = e2 => { if (_scrubbing) seekFromEvent(e2); };
+        const onUp   = () => {
+          window.removeEventListener('mousemove', onMove);
+          window.removeEventListener('mouseup',   onUp);
+          _scrubEndTimer = setTimeout(() => { _scrubbing = false; }, 150);
+        };
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('mouseup',   onUp);
+      });
+
+      l1El.addEventListener('timeupdate', () => {
+        if (_scrubbing || !l1El.duration) return;
+        timelineFill.style.width = ((l1El.currentTime / l1El.duration) * 100) + '%';
+        currentTimeEl.textContent = fmtTime(l1El.currentTime);
+      });
     }
   });
 
   if (item.text) {
-    // Attach label to a randomly chosen image — either overlapping it or just below.
-    const target = placed[Math.floor(rand(0, placed.length))];
+    // If the item has a video, always attach the label to it. Otherwise pick randomly.
+    const videoEntry = placed.find(p => /\.(mp4|mov|webm|ogg)$/i.test(p.src));
+    const target = videoEntry || placed[Math.floor(rand(0, placed.length))];
     const labelX = Math.round(target.x + rand(0, target.width * 0.5));
-    const labelY = Math.round(target.y + rand(10, 50));
+    const labelY = videoEntry
+      ? Math.round(target.y + rand(70, 110))
+      : Math.round(target.y + rand(10, 50));
 
     const el       = document.createElement('div');
     el.className   = 'surface-label';
@@ -527,6 +713,88 @@ function placeItem(item) {
     el.style.top   = labelY + 'px';
     layer2.appendChild(el);
     allLabels.push({ el, itemId: item.id });
+
+    if (item.link) {
+      const lx = IS_MOBILE ? Math.round(item.link.x * (MOB_SURF_W / DESK_SURF_W)) : item.link.x;
+      const ly = IS_MOBILE ? Math.round(item.link.y * (MOB_SURF_H / DESK_SURF_H)) : item.link.y;
+      const linkEl = document.createElement('a');
+      linkEl.href        = item.link.href;
+      linkEl.target      = '_blank';
+      linkEl.rel         = 'noopener noreferrer';
+      linkEl.textContent = item.link.href.replace(/^https?:\/\//, '').replace(/\/$/, '');
+      Object.assign(linkEl.style, {
+        position:       'absolute',
+        left:           lx + 'px',
+        top:            ly + 'px',
+        fontFamily:     '"Lucida Grande", Verdana, Geneva, sans-serif',
+        fontSize:       '11px',
+        color:          '#333',
+        textDecoration: 'underline',
+        pointerEvents:  'auto',
+        cursor:         'pointer',
+      });
+      layer2.appendChild(linkEl);
+      allLabels.push({ el: linkEl, itemId: item.id });
+    }
+  }
+
+  // ── "read" button for ScreenShotThis (id 012) — reveals t001 text region ──
+  if (item.id === '012') {
+    const target = placed[0];
+    const readBtnX = Math.round(target.x + rand(0, target.width * 0.4));
+    const readBtnY = Math.round(target.y + rand(70, 110));
+
+    const readBtn = document.createElement('div');
+    readBtn.textContent = 'read';
+    Object.assign(readBtn.style, {
+      position:      'absolute',
+      left:          readBtnX + 'px',
+      top:           readBtnY + 'px',
+      fontFamily:    '"Lucida Grande", Verdana, Geneva, sans-serif',
+      fontSize:      '10px',
+      color:         '#333',
+      cursor:        'pointer',
+      userSelect:    'none',
+      zIndex:        '11',
+      pointerEvents: 'auto',
+      padding:       '10px 14px',
+      margin:        '-10px -14px',
+    });
+
+    let _readRect    = null;
+    let _readTimeout = null;
+
+    readBtn.addEventListener('click', () => {
+      if (_readRect) {
+        clearTimeout(_readTimeout);
+        _readTimeout = null;
+        viewRects.delete(_readRect);
+        _readRect = null;
+        readBtn.textContent = 'read';
+        return;
+      }
+
+      // Get t001's current position and size from the DOM at click time
+      const t001 = allTexts.find(t => t.textId === 't001');
+      if (!t001) return;
+      const tx = parseFloat(t001.el.style.left);
+      const ty = parseFloat(t001.el.style.top);
+      const tw = t001.el.offsetWidth  || 420;
+      const th = t001.el.offsetHeight || 120;
+
+      _readRect = { x: tx, y: ty, w: tw, h: th };
+      viewRects.add(_readRect);
+      readBtn.textContent = 'close';
+
+      _readTimeout = setTimeout(() => {
+        viewRects.delete(_readRect);
+        _readRect = null;
+        _readTimeout = null;
+        readBtn.textContent = 'read';
+      }, 12000);
+    });
+
+    stage.appendChild(readBtn);
   }
 }
 
@@ -570,24 +838,31 @@ fetch('content.json')
     const fontSizes = { small: '11px', medium: '14px', large: '20px' };
     (data.texts || []).forEach(t => {
       const el = document.createElement('div');
-      el.className   = 'surface-text';
-      el.textContent = t.content;
+      el.className      = 'surface-text';
+      el.dataset.textId = t.id;
+      const useRagged   = t.id === 't001' && t.content;
+      if (useRagged) {
+        el.innerHTML = raggedWrap(t.content, t.id, 6);
+      } else {
+        el.textContent = t.content;
+      }
       const tx = IS_MOBILE ? Math.round(t.x * (MOB_SURF_W / DESK_SURF_W)) : t.x;
       const ty = IS_MOBILE ? Math.round(t.y * (MOB_SURF_H / DESK_SURF_H)) : t.y;
       Object.assign(el.style, {
-        position:   'absolute',
-        left:       tx + 'px',
-        top:        ty + 'px',
-        fontFamily: '"Lucida Grande", Arial, sans-serif',
-        fontSize:   fontSizes[t.style] || '11px',
-        color:       '#333',
-        lineHeight:  '1.5',
-        maxWidth:    '160px',
-        wordSpacing: '3px',
-        textAlign:   'left',
+        position:      'absolute',
+        left:          tx + 'px',
+        top:           ty + 'px',
+        fontFamily:    '"Lucida Grande", Arial, sans-serif',
+        fontSize:      fontSizes[t.style] || '11px',
+        color:         '#333',
+        lineHeight:    '1.5',
+        maxWidth:      useRagged ? '420px' : '160px',
+        wordSpacing:   '3px',
+        textAlign:     'left',
         pointerEvents: 'none',
       });
       layer1.appendChild(el);
+      allTexts.push({ el, textId: t.id });
     });
 
     waitResolveAndCache();
@@ -697,8 +972,28 @@ Object.assign(contactDiv.style, {
   lineHeight: '1.6',
   pointerEvents: 'auto',
 });
-contactDiv.innerHTML =
-  'helenyzh, heleniyzh@gmail.com, London<br>';
+const gwLink = document.createElement('span');
+gwLink.textContent = 'GuestWeb';
+Object.assign(gwLink.style, {
+  textDecoration: 'underline',
+  cursor:         'pointer',
+});
+gwLink.addEventListener('click', () => {
+  const curZoom = parseFloat(stage.style.zoom) || 1;
+  if (!_isSafari && curZoom < 0.8) {
+    stage.style.zoom             = 0.8;
+    layer3.style.transform       = 'scale(0.8)';
+    layer3.style.transformOrigin = 'center';
+    setTimeout(() => {
+      document.getElementById('guestweb-area').scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+    }, 300);
+  } else {
+    document.getElementById('guestweb-area').scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+  }
+});
+
+contactDiv.innerHTML = 'helenyzh, heleniyzh@gmail.com, London, ';
+contactDiv.appendChild(gwLink);
 document.body.appendChild(contactDiv);
 
 // ── MOBILE TOUCH FEATURE ──────────────────────────────────────────────────────
@@ -832,6 +1127,30 @@ function previewEnter() {
     p.l1El.style.cursor = 'grab';
     p.l1El.addEventListener('mousedown', previewDragStart);
   }
+
+  // Make surface texts draggable
+  for (const t of allTexts) {
+    const lbl = document.createElement('div');
+    Object.assign(lbl.style, {
+      position:      'absolute',
+      left:          t.el.style.left,
+      top:           (parseFloat(t.el.style.top) - 18) + 'px',
+      fontFamily:    '"Lucida Grande", Arial, sans-serif',
+      fontSize:      '10px',
+      color:         '#00a',
+      background:    'rgba(255,255,255,0.75)',
+      padding:       '1px 3px',
+      pointerEvents: 'none',
+      zIndex:        '20',
+      whiteSpace:    'nowrap',
+    });
+    lbl.textContent = `${t.textId}: ${Math.round(parseFloat(t.el.style.left))}, ${Math.round(parseFloat(t.el.style.top))}`;
+    stage.appendChild(lbl);
+    previewLabels.push({ el: lbl, t });
+    t.el.style.cursor        = 'grab';
+    t.el.style.pointerEvents = 'auto';
+    t.el.addEventListener('mousedown', previewTextDragStart);
+  }
 }
 
 function previewExit() {
@@ -842,10 +1161,17 @@ function previewExit() {
   document.body.style.cursor = '';
 
   // Remove labels and unbind drag
-  for (const { el, p } of previewLabels) {
+  for (const { el, p, t } of previewLabels) {
     el.remove();
-    p.l1El.style.cursor = '';
-    p.l1El.removeEventListener('mousedown', previewDragStart);
+    if (p) {
+      p.l1El.style.cursor = '';
+      p.l1El.removeEventListener('mousedown', previewDragStart);
+    }
+    if (t) {
+      t.el.style.cursor        = '';
+      t.el.style.pointerEvents = 'none';
+      t.el.removeEventListener('mousedown', previewTextDragStart);
+    }
   }
   previewLabels.length = 0;
 
@@ -864,6 +1190,10 @@ function previewExit() {
   for (const [id, imgs] of Object.entries(out)) {
     console.log(`Item ${id}:`);
     imgs.forEach(img => console.log(`  { "src": "${img.src}", "width": ${img.width}, "x": ${img.x}, "y": ${img.y} }`));
+  }
+  console.log('── Updated text positions ──');
+  for (const t of allTexts) {
+    console.log(`  { "id": "${t.textId}", "x": ${Math.round(parseFloat(t.el.style.left))}, "y": ${Math.round(parseFloat(t.el.style.top))} }`);
   }
   console.log('────────────────────────────');
 }
@@ -916,6 +1246,48 @@ function previewDragEnd() {
   window.removeEventListener('mouseup',   previewDragEnd);
 }
 
+let _textDrag = null;
+
+function previewTextDragStart(e) {
+  e.preventDefault();
+  e.stopPropagation();
+  const t = allTexts.find(q => q.el === e.currentTarget);
+  if (!t) return;
+  _textDrag = {
+    t,
+    startMouseX: e.pageX,
+    startMouseY: e.pageY,
+    startElX:    parseFloat(t.el.style.left),
+    startElY:    parseFloat(t.el.style.top),
+  };
+  t.el.style.cursor = 'grabbing';
+  document.body.style.userSelect = 'none';
+  window.addEventListener('mousemove', previewTextDragMove);
+  window.addEventListener('mouseup',   previewTextDragEnd);
+}
+
+function previewTextDragMove(e) {
+  if (!_textDrag) return;
+  const nx = Math.round(_textDrag.startElX + e.pageX - _textDrag.startMouseX);
+  const ny = Math.round(_textDrag.startElY + e.pageY - _textDrag.startMouseY);
+  _textDrag.t.el.style.left = nx + 'px';
+  _textDrag.t.el.style.top  = ny + 'px';
+  const lbl = previewLabels.find(l => l.t === _textDrag.t);
+  if (lbl) {
+    lbl.el.style.left  = nx + 'px';
+    lbl.el.style.top   = (ny - 18) + 'px';
+    lbl.el.textContent = `${_textDrag.t.textId}: ${nx}, ${ny}`;
+  }
+}
+
+function previewTextDragEnd() {
+  if (_textDrag) _textDrag.t.el.style.cursor = 'grab';
+  _textDrag = null;
+  document.body.style.userSelect = '';
+  window.removeEventListener('mousemove', previewTextDragMove);
+  window.removeEventListener('mouseup',   previewTextDragEnd);
+}
+
 document.addEventListener('keydown', e => {
   if (e.key === 'p' || e.key === 'P') {
     previewMode ? previewExit() : previewEnter();
@@ -932,7 +1304,15 @@ function getMinZoom() {
   return Math.max(minW, minH);
 }
 
-if (!_isSafari) {
+if (_isSafari) {
+  // Block all pinch-zoom and ctrl+scroll zoom on Safari.
+  document.addEventListener('wheel', function(e) {
+    if (e.ctrlKey) e.preventDefault();
+  }, { passive: false });
+  document.addEventListener('gesturestart',  function(e) { e.preventDefault(); }, { passive: false });
+  document.addEventListener('gesturechange', function(e) { e.preventDefault(); }, { passive: false });
+  document.addEventListener('gestureend',    function(e) { e.preventDefault(); }, { passive: false });
+} else {
   document.addEventListener('wheel', function(e) {
     if (!e.ctrlKey) return;
     e.preventDefault();
@@ -954,12 +1334,6 @@ if (!_isSafari) {
       surfaceY * newZoom - e.clientY
     );
   }, { passive: false });
-
-  window.addEventListener('resize', function() {
-    const min = getMinZoom();
-    const cur = parseFloat(stage.style.zoom) || 1;
-    if (cur < min) stage.style.zoom = min;
-  });
 }
 // ── END ZOOM ──────────────────────────────────────────────────────────────────
 
