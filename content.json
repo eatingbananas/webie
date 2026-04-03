@@ -10,7 +10,7 @@
       "images": [
         { "src": "WORKimages/2024_Marlborough_Road_1.jpg", "width": 240, "x": 1078, "y": 517,  "mx": 150, "my": 626,  "mw": 333 },
         { "src": "WORKimages/2024_Marlborough_Road_2.jpg", "width": 208, "x": 859,  "y": 322,  "mx": 90,  "my": 375,  "mw": 289 },
-        { "src": "WORKimages/2024_Marlborough_Road_3.jpg", "width": 176, "x": 1399, "y": 641,  "mx": 531, "my": 567,  "mw": 244 },
+        { "src": "WORKimages/2024_Marlborough_Road_3.jpg", "width": 230, "x": 1711, "y": 601,  "mx": 531, "my": 567,  "mw": 244 },
         { "src": "WORKimages/2024_Marlborough_Road_4.jpg", "width": 192, "x": 821,  "y": 864,  "mx": 380, "my": 1108, "mw": 267 },
         { "src": "WORKimages/2024_Marlborough_Road_5.jpg", "width": 168, "x": 1354, "y": 250,  "mx": 591, "my": 164,  "mw": 233 }
       ],
@@ -37,7 +37,7 @@
       "title": "Female Photographer",
       "year": "2024",
       "images": [
-        { "src": "WORKimages/2024_Female_Photographer.jpg", "width": 288, "x": 2343, "y": 316, "mx": 996, "my": 366, "mw": 400 }
+        { "src": "WORKimages/2024_Female_Photographer.jpg", "width": 320, "x": 2343, "y": 316, "mx": 996, "my": 366, "mw": 400 }
       ],
       "text": null
     },
