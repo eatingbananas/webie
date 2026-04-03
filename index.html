@@ -1,39 +1,128 @@
-'use strict';
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>helenyzh</title>
+  <link rel="icon" type="image/x-icon" href="/Assets/wayup.png">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="stage">
+    <div id="layer1"></div>
+    <div id="layer2"></div>
+  </div>
+  <script src="main.js"></script>
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js';
+    import { getDatabase, ref, push, onChildAdded } from 'https://www.gstatic.com/firebasejs/12.11.0/firebase-database.js';
 
-// ── Landing position offset from centre (px) ──────────────────────────────────
-const LANDING_OFFSET_X = -300;   // positive = scroll right
-const LANDING_OFFSET_Y = -180;   // positive = scroll down
+    const firebaseConfig = {
+      apiKey:            "AIzaSyD1bqIVIWr683C16T_GpJypaF04_jUmJa0",
+      authDomain:        "moringa-64ab0.firebaseapp.com",
+      databaseURL:       "https://moringa-64ab0-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId:         "moringa-64ab0",
+      storageBucket:     "moringa-64ab0.firebasestorage.app",
+      messagingSenderId: "106289519784",
+      appId:             "1:106289519784:web:40b4ec27482d895de1b69d"
+    };
 
-// Declared early so _mirrorLoop IIFE can read it before the zoom block below.
-let _currentScale = 1;
+    const app = initializeApp(firebaseConfig);
+    const db  = getDatabase(app);
 
-const layer1 = document.getElementById('layer1');
-const layer2 = document.getElementById('layer2');
-const stage  = document.getElementById('stage');
+    // ── GuestWeb ──────────────────────────────────────────────────────────────
+    const GW_X = 3600;
+    const GW_Y = 1000;
 
-// ── Scroll wrapper ────────────────────────────────────────────────────────────
-// scrollWrap is a fixed viewport-filling div with overflow:scroll.
-// stage sits inside it. spacer grows with scale to define the scrollable area.
-const scrollWrap = document.createElement('div');
-scrollWrap.id = 'scroll-wrap';
-document.body.insertBefore(scrollWrap, stage);
-scrollWrap.appendChild(stage);
+    // Expose coords so the main.js GuestWeb link can scroll to this position.
+    document.body.dataset.gwX = GW_X;
+    document.body.dataset.gwY = GW_Y;
 
-const spacer = document.createElement('div');
-spacer.id = 'scroll-spacer';
-Object.assign(spacer.style, {
-  position:      'absolute',
-  top:           '0',
-  left:          '0',
-  pointerEvents: 'none',
-  flexShrink:    '0',
-});
-scrollWrap.appendChild(spacer);
+    const layer2 = document.getElementById('layer2');
 
-// ── Layer 3: silhouette cursor (always sharp) ─────────────────────────────────
-const layer3      = document.createElement('div');
-const revealInner = document.createElement('div');
+    const s = 'font-family:"Lucida Grande",Arial,sans-serif;font-size:11px;color:#333;';
 
+    const formEl = document.createElement('div');
+    formEl.id = 'guestweb-area';
+    Object.assign(formEl.style, {
+      position: 'absolute',
+      left:     GW_X + 'px',
+      top:      GW_Y + 'px',
+      zIndex:   '5',
+      width:    '190px',
+    });
+    formEl.innerHTML =
+      '<div style="' + s + 'margin-bottom:6px;">GuestWeb</div>' +
+      '<input id="gw-name" type="text" placeholder="name or alias" maxlength="60" style="display:block;width:100%;margin-bottom:4px;box-sizing:border-box;' + s + '">' +
+      '<input id="gw-site" type="text" placeholder="your site, optional" maxlength="200" style="display:block;width:100%;margin-bottom:6px;box-sizing:border-box;' + s + '">' +
+      '<button id="gw-submit" style="' + s + 'cursor:pointer;">sign</button>' +
+      '<div style="' + s + 'margin-top:6px;color:#888;">by signing, your name and link are visible to visitors</div>';
+
+    layer2.appendChild(formEl);
+
+    // Entries scatter below the form
+    const BASE_X = GW_X;
+    const BASE_Y = GW_Y + 120;
+    let entryCount = 0;
+
+    // Seeded RNG (xorshift32)
+    let _s = 4817;
+    function gwRand(min, max) {
+      _s ^= _s << 13; _s ^= _s >>> 17; _s ^= _s << 5; _s = _s >>> 0;
+      return min + (_s / 0x100000000) * (max - min);
+    }
+
+    function addEntry(name, website) {
+      const ex = Math.round(BASE_X + gwRand(-40, 140));
+      const ey = Math.round(BASE_Y + entryCount * 17 + gwRand(-2, 2));
+      entryCount++;
+
+      const el = document.createElement('div');
+      Object.assign(el.style, {
+        position:   'absolute',
+        left:       ex + 'px',
+        top:        ey + 'px',
+        zIndex:     '5',
+        fontFamily: '"Lucida Grande", Arial, sans-serif',
+        fontSize:   '11px',
+        color:      '#333',
+        whiteSpace: 'nowrap',
+      });
+
+      if (website && website.trim()) {
+        const href = /^https?:\/\//i.test(website.trim()) ? website.trim() : 'https://' + website.trim();
+        const a = document.createElement('a');
+        a.href        = href;
+        a.target      = '_blank';
+        a.rel         = 'noopener noreferrer';
+        a.textContent = name;
+        Object.assign(a.style, { color: '#336', textDecoration: 'underline' });
+        el.appendChild(a);
+      } else {
+        el.textContent = name;
+      }
+
+      layer2.appendChild(el);
+    }
+
+    // Load existing + live new entries
+    onChildAdded(ref(db, 'guestweb'), snap => {
+      const d = snap.val();
+      if (d && d.name) addEntry(d.name, d.website || '');
+    });
+
+    // Submit
+    document.getElementById('gw-submit').addEventListener('click', () => {
+      const name = (document.getElementById('gw-name').value || '').trim();
+      if (!name) return;
+      const website = (document.getElementById('gw-site').value || '').trim();
+      push(ref(db, 'guestweb'), { name, website, timestamp: Date.now() });
+      document.getElementById('gw-name').value = '';
+      document.getElementById('gw-site').value = '';
+    });
+  </script>
+</body>
+</html>
 Object.assign(layer3.style, {
   position:      'fixed',
   overflow:      'hidden',
