@@ -4,6 +4,25 @@ const layer1 = document.getElementById('layer1');
 const layer2 = document.getElementById('layer2');
 const stage  = document.getElementById('stage');
 
+// ── Scroll wrapper ────────────────────────────────────────────────────────────
+// scrollWrap is a fixed viewport-filling div with overflow:scroll.
+// stage sits inside it. spacer grows with scale to define the scrollable area.
+const scrollWrap = document.createElement('div');
+scrollWrap.id = 'scroll-wrap';
+document.body.insertBefore(scrollWrap, stage);
+scrollWrap.appendChild(stage);
+
+const spacer = document.createElement('div');
+spacer.id = 'scroll-spacer';
+Object.assign(spacer.style, {
+  position:      'absolute',
+  top:           '0',
+  left:          '0',
+  pointerEvents: 'none',
+  flexShrink:    '0',
+});
+scrollWrap.appendChild(spacer);
+
 // ── Layer 3: silhouette cursor (always sharp) ─────────────────────────────────
 const layer3      = document.createElement('div');
 const revealInner = document.createElement('div');
@@ -50,12 +69,13 @@ let imageCache = null;
 const erosionPoints = [];
 const DECAY_MS      = 3000;
 const MEM_SCALE     = 0.25;
-const MEM_RADIUS    = 180;
+const MEM_RADIUS    = 182;
 const MEM_STEP      = 10;
-const DEPOSIT_ALPHA = 0.10;
+const DEPOSIT_ALPHA = 0.15;
 
 let eCtx  = null;
 let surfW = 0, surfH = 0;
+let maxSurfW = 0, maxSurfH = 0;  // declared size from content.json — zoom floor reference
 let lastMemX = -Infinity, lastMemY = -Infinity;
 const erosionCanvas = document.createElement('canvas');
 
@@ -271,6 +291,12 @@ function waitResolveAndCache() {
     surfW = Math.round(bx1 - bx0 + SURFACE_PAD * 2);
     surfH = Math.round(by1 - by0 + SURFACE_PAD * 2);
 
+    // Clamp current scale to new minimum now that surfW/surfH are finalised.
+    const minAfterResize = getMinScale();
+    if (_currentScale < minAfterResize) {
+      applyScale(minAfterResize, surfW / 2, surfH / 2);
+    }
+
     const w = surfW + 'px';
     const h = surfH + 'px';
 
@@ -296,10 +322,9 @@ function waitResolveAndCache() {
 
     buildImageCache(eW, eH);
 
-    window.scrollTo(
-      surfW / 2 - window.innerWidth  / 2,
-      surfH / 2 - window.innerHeight / 2
-    );
+    updateSpacer();
+    scrollWrap.scrollLeft = surfW / 2 - scrollWrap.clientWidth  / 2;
+    scrollWrap.scrollTop  = surfH / 2 - scrollWrap.clientHeight / 2;
 
     // ── Mobile width clamp ───────────────────────────────────────────────────
     // Only the stage (the scroll container) is narrowed — layers, canvas, and
@@ -537,19 +562,6 @@ function placeItem(item) {
         return m + ':' + (sec < 10 ? '0' : '') + sec;
       }
 
-      const btnStyle = {
-        position:      'absolute',
-        fontFamily:    '"Lucida Grande", Verdana, Geneva, sans-serif',
-        fontSize:      '10px',
-        color:         '#333',
-        cursor:        'pointer',
-        userSelect:    'none',
-        zIndex:        '11',
-        pointerEvents: 'auto',
-        padding:       '10px 14px',
-        margin:        '-10px -14px',
-      };
-
       const btnY = Math.round(y + rand(10, 40));
       const btnX = Math.round(x + rand(10, width * 0.4));
       let btnOffX = 0;
@@ -557,11 +569,22 @@ function placeItem(item) {
       function makeBtn(label) {
         const el = document.createElement('div');
         el.textContent = label;
-        Object.assign(el.style, btnStyle);
-        el.style.left = (btnX + btnOffX) + 'px';
-        el.style.top  = btnY + 'px';
-        btnOffX += 70;
+        Object.assign(el.style, {
+          position:      'absolute',
+          left:          (btnX + btnOffX) + 'px',
+          top:           btnY + 'px',
+          fontFamily:    '"Lucida Grande", Verdana, Geneva, sans-serif',
+          fontSize:      '10px',
+          color:         '#333',
+          cursor:        'pointer',
+          userSelect:    'none',
+          zIndex:        '11',
+          pointerEvents: 'auto',
+          padding:       '10px 14px',
+          margin:        '-10px -14px',
+        });
         stage.appendChild(el);
+        btnOffX += 70;
         return el;
       }
 
@@ -837,6 +860,8 @@ fetch('content.json')
     }
     surfW = IS_MOBILE ? MOB_SURF_W : data.surface_width;
     surfH = IS_MOBILE ? MOB_SURF_H : data.surface_height;
+    maxSurfW = surfW;
+    maxSurfH = surfH;
     const w = surfW + 'px';
     const h = surfH + 'px';
 
@@ -930,7 +955,7 @@ async function initCursor() {
   layer3.style.maskRepeat         = 'no-repeat';
   layer3.style.maskPosition       = '0 0';
 
-  document.addEventListener('mousemove',  e => moveReveal(e.clientX, e.clientY));
+  document.addEventListener('mousemove',  e => { _lastMouseX = e.clientX; _lastMouseY = e.clientY; moveReveal(e.clientX, e.clientY); });
   document.addEventListener('mouseleave', hideReveal);
   // Touch listeners are added by MOBILE TOUCH FEATURE below
 }
@@ -940,13 +965,13 @@ function moveReveal(clientX, clientY) {
   layer3.style.left = (clientX - figW / 2) + 'px';
   layer3.style.top  = (clientY - FIG_H / 2) + 'px';
 
-  const z = parseFloat(stage.style.zoom) || 1;
+  const z = _currentScale;
 
-  // Scale layer3 to match stage zoom so silhouette matches content scale.
+  // Scale layer3 to match stage scale so silhouette matches content scale.
   layer3.style.transform       = z !== 1 ? `scale(${z})` : '';
   layer3.style.transformOrigin = 'center';
 
-  // getBoundingClientRect already accounts for CSS zoom and scroll.
+  // getBoundingClientRect reflects the visual position after CSS transform.
   const rect    = layer1.getBoundingClientRect();
   const visOffX = clientX - rect.left;
   const visOffY = clientY - rect.top;
@@ -997,7 +1022,7 @@ Object.assign(contactDiv.style, {
   left:       '10px',
   zIndex:     '10',
   fontFamily: '"Lucida Grande", Arial, sans-serif',
-  fontSize:   '11px',
+  fontSize:   '12px',
   color:      '#333',
   lineHeight: '1.6',
   pointerEvents: 'auto',
@@ -1009,11 +1034,8 @@ Object.assign(gwLink.style, {
   cursor:         'pointer',
 });
 gwLink.addEventListener('click', () => {
-  const curZoom = parseFloat(stage.style.zoom) || 1;
-  if (!_isSafari && curZoom < 0.8) {
-    stage.style.zoom             = 0.8;
-    layer3.style.transform       = 'scale(0.8)';
-    layer3.style.transformOrigin = 'center';
+  if (_currentScale < 0.8) {
+    applyScale(0.8, surfW / 2, surfH / 2);
     setTimeout(() => {
       document.getElementById('guestweb-area').scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
     }, 300);
@@ -1050,8 +1072,6 @@ function mob_onScroll() {
 }
 
 function mob_showHint() {
-  if (sessionStorage.getItem('mob_hint_shown')) return;
-
   const hint = document.createElement('div');
   hint.innerHTML = 'drag figure to look, scroll to navigate<br><span id="mob-hint-pc">or experience differently on PC...</span>';
   Object.assign(hint.style, {
@@ -1071,7 +1091,6 @@ function mob_showHint() {
   document.body.appendChild(hint);
 
   setTimeout(() => {
-    sessionStorage.setItem('mob_hint_shown', '1');
     hint.style.opacity = '1';
     setTimeout(() => {
       hint.style.opacity = '0';
@@ -1129,7 +1148,7 @@ if ('ontouchstart' in window) {
 
   // touchend: figure stays where released — no action needed.
 
-  document.addEventListener('scroll', mob_onScroll, { passive: true });
+  scrollWrap.addEventListener('scroll', mob_onScroll, { passive: true });
 
   // Place figure at centre once figW is available (initCursor is async).
   const mob_waitForFigW = setInterval(() => {
@@ -1185,6 +1204,30 @@ function previewEnter() {
     p.l1El.addEventListener('mousedown', previewDragStart);
   }
 
+  // Make GuestWeb draggable
+  const gwEl = document.getElementById('guestweb-area');
+  if (gwEl) {
+    const gwLbl = document.createElement('div');
+    Object.assign(gwLbl.style, {
+      position:      'absolute',
+      left:          gwEl.style.left,
+      top:           (parseFloat(gwEl.style.top) - 18) + 'px',
+      fontFamily:    '"Lucida Grande", Arial, sans-serif',
+      fontSize:      '10px',
+      color:         '#a0a',
+      background:    'rgba(255,255,255,0.75)',
+      padding:       '1px 3px',
+      pointerEvents: 'none',
+      zIndex:        '20',
+      whiteSpace:    'nowrap',
+    });
+    gwLbl.textContent = `GuestWeb: ${Math.round(parseFloat(gwEl.style.left))}, ${Math.round(parseFloat(gwEl.style.top))}`;
+    stage.appendChild(gwLbl);
+    previewLabels.push({ el: gwLbl, gw: gwEl });
+    gwEl.style.cursor = 'grab';
+    gwEl.addEventListener('mousedown', previewGwDragStart);
+  }
+
   // Make surface texts draggable
   for (const t of allTexts) {
     const lbl = document.createElement('div');
@@ -1218,7 +1261,7 @@ function previewExit() {
   document.body.style.cursor = '';
 
   // Remove labels and unbind drag
-  for (const { el, p, t } of previewLabels) {
+  for (const { el, p, t, gw } of previewLabels) {
     el.remove();
     if (p) {
       p.l1El.style.cursor = '';
@@ -1228,6 +1271,10 @@ function previewExit() {
       t.el.style.cursor        = '';
       t.el.style.pointerEvents = 'none';
       t.el.removeEventListener('mousedown', previewTextDragStart);
+    }
+    if (gw) {
+      gw.style.cursor = '';
+      gw.removeEventListener('mousedown', previewGwDragStart);
     }
   }
   previewLabels.length = 0;
@@ -1345,6 +1392,68 @@ function previewTextDragEnd() {
   window.removeEventListener('mouseup',   previewTextDragEnd);
 }
 
+// ── GuestWeb drag ─────────────────────────────────────────────────────────────
+let _gwDrag = null;
+
+function previewGwDragStart(e) {
+  e.preventDefault();
+  e.stopPropagation();
+  const gwEl = document.getElementById('guestweb-area');
+  if (!gwEl) return;
+  _gwDrag = {
+    gwEl,
+    startMouseX: e.pageX,
+    startMouseY: e.pageY,
+    startElX:    parseFloat(gwEl.style.left),
+    startElY:    parseFloat(gwEl.style.top),
+    // Capture all entry divs (siblings of gwEl in layer2 that are not the form)
+    entries: Array.from(layer2.children).filter(c => c !== gwEl && c.style.position === 'absolute').map(c => ({
+      el: c,
+      startX: parseFloat(c.style.left),
+      startY: parseFloat(c.style.top),
+    })),
+  };
+  gwEl.style.cursor = 'grabbing';
+  document.body.style.userSelect = 'none';
+  window.addEventListener('mousemove', previewGwDragMove);
+  window.addEventListener('mouseup',   previewGwDragEnd);
+}
+
+function previewGwDragMove(e) {
+  if (!_gwDrag) return;
+  const dx = e.pageX - _gwDrag.startMouseX;
+  const dy = e.pageY - _gwDrag.startMouseY;
+  const nx = Math.round(_gwDrag.startElX + dx);
+  const ny = Math.round(_gwDrag.startElY + dy);
+  _gwDrag.gwEl.style.left = nx + 'px';
+  _gwDrag.gwEl.style.top  = ny + 'px';
+  // Move entries by same delta
+  for (const entry of _gwDrag.entries) {
+    entry.el.style.left = Math.round(entry.startX + dx) + 'px';
+    entry.el.style.top  = Math.round(entry.startY + dy) + 'px';
+  }
+  // Update label
+  const lbl = previewLabels.find(l => l.gw === _gwDrag.gwEl);
+  if (lbl) {
+    lbl.el.style.left  = nx + 'px';
+    lbl.el.style.top   = (ny - 18) + 'px';
+    lbl.el.textContent = `GuestWeb: ${nx}, ${ny}`;
+  }
+}
+
+function previewGwDragEnd() {
+  if (_gwDrag) {
+    _gwDrag.gwEl.style.cursor = 'grab';
+    const nx = Math.round(parseFloat(_gwDrag.gwEl.style.left));
+    const ny = Math.round(parseFloat(_gwDrag.gwEl.style.top));
+    console.log(`GuestWeb new position — GW_X: ${nx}, GW_Y: ${ny}`);
+  }
+  _gwDrag = null;
+  document.body.style.userSelect = '';
+  window.removeEventListener('mousemove', previewGwDragMove);
+  window.removeEventListener('mouseup',   previewGwDragEnd);
+}
+
 document.addEventListener('keydown', e => {
   if (e.key === 'p' || e.key === 'P') {
     previewMode ? previewExit() : previewEnter();
@@ -1353,43 +1462,109 @@ document.addEventListener('keydown', e => {
 // ── END PREVIEW / DRAG MODE ───────────────────────────────────────────────────
 
 // ── ZOOM (non-Safari only) ────────────────────────────────────────────────────
-const _isSafari = /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent);
+// ── ZOOM (transform scale, all browsers) ─────────────────────────────────────
+let _currentScale = 1;
+let _lastMouseX = window.innerWidth / 2;
+let _lastMouseY = window.innerHeight / 2;
 
-function getMinZoom() {
-  const minW = window.innerWidth  / surfW;
-  const minH = window.innerHeight / surfH;
-  return Math.max(minW, minH);
+function getMinScale() {
+  const refW = surfW || maxSurfW || 5400;
+  const refH = surfH || maxSurfH || 3900;
+  return Math.max(scrollWrap.clientWidth / refW, scrollWrap.clientHeight / refH);
 }
 
-if (_isSafari) {
-  // Block all pinch-zoom and ctrl+scroll zoom on Safari.
-  document.addEventListener('wheel', function(e) {
-    if (e.ctrlKey) e.preventDefault();
-  }, { passive: false });
-  document.addEventListener('gesturestart',  function(e) { e.preventDefault(); }, { passive: false });
-  document.addEventListener('gesturechange', function(e) { e.preventDefault(); }, { passive: false });
-  document.addEventListener('gestureend',    function(e) { e.preventDefault(); }, { passive: false });
-} else {
-  document.addEventListener('wheel', function(e) {
-    if (!e.ctrlKey) return;
-    e.preventDefault();
-
-    const oldZoom = parseFloat(stage.style.zoom) || 1;
-    const delta   = e.deltaY > 0 ? -0.05 : 0.05;
-    const newZoom = Math.min(3, Math.max(getMinZoom(), oldZoom + delta));
-
-    const rect     = stage.getBoundingClientRect();
-    const surfaceX = (e.clientX - rect.left) / oldZoom;
-    const surfaceY = (e.clientY - rect.top)  / oldZoom;
-
-    stage.style.zoom             = newZoom;
-    layer3.style.transform       = newZoom !== 1 ? `scale(${newZoom})` : '';
-    layer3.style.transformOrigin = 'center';
-
-    window.scrollTo(
-      surfaceX * newZoom - e.clientX,
-      surfaceY * newZoom - e.clientY
-    );
-  }, { passive: false });
+function updateSpacer() {
+  spacer.style.width  = Math.max(surfW * _currentScale, scrollWrap.clientWidth)  + 'px';
+  spacer.style.height = Math.max(surfH * _currentScale, scrollWrap.clientHeight) + 'px';
 }
+
+function applyScale(newScale, stageX, stageY) {
+  // stageX/stageY are unscaled stage coordinates — anchor point stays fixed.
+  // Adjust scroll so the anchor point remains at the same viewport position.
+  const newScrollLeft = stageX * (newScale - _currentScale) + scrollWrap.scrollLeft;
+  const newScrollTop  = stageY * (newScale - _currentScale) + scrollWrap.scrollTop;
+
+  _currentScale = newScale;
+  stage.style.transformOrigin = '0 0';
+  stage.style.transform       = newScale !== 1 ? 'scale(' + newScale + ')' : '';
+  updateSpacer();
+
+  scrollWrap.scrollLeft = newScrollLeft;
+  scrollWrap.scrollTop  = newScrollTop;
+}
+
+// Block native browser pinch/ctrl-scroll zoom on all browsers.
+document.addEventListener('wheel', function(e) {
+  if (e.ctrlKey) e.preventDefault();
+}, { passive: false });
+let _gestureScale0 = 1;
+document.addEventListener('gesturestart', function(e) {
+  e.preventDefault();
+  _gestureScale0 = _currentScale;
+}, { passive: false });
+
+document.addEventListener('gesturechange', function(e) {
+  e.preventDefault();
+  const newScale = Math.min(3, Math.max(getMinScale(), _gestureScale0 * e.scale));
+  const originX  = (scrollWrap.scrollLeft + e.clientX) / _currentScale;
+  const originY  = (scrollWrap.scrollTop  + e.clientY) / _currentScale;
+  applyScale(newScale, originX, originY);
+  moveReveal(_lastMouseX, _lastMouseY);
+}, { passive: false });
+
+document.addEventListener('gestureend', function(e) {
+  e.preventDefault();
+}, { passive: false });
+
+// Ctrl+scroll zoom.
+document.addEventListener('wheel', function(e) {
+  if (!e.ctrlKey) return;
+  e.preventDefault();
+
+  const delta    = e.deltaY > 0 ? -0.05 : 0.05;
+  const newScale = Math.min(3, Math.max(getMinScale(), _currentScale + delta));
+  // Cursor in unscaled stage coordinates.
+  const originX  = (scrollWrap.scrollLeft + e.clientX) / _currentScale;
+  const originY  = (scrollWrap.scrollTop  + e.clientY) / _currentScale;
+
+  applyScale(newScale, originX, originY);
+  moveReveal(_lastMouseX, _lastMouseY);
+}, { passive: false });
+
+// Touch pinch zoom.
+let _pinchDist0 = null;
+let _pinchScale0 = 1;
+let _pinchMidX = 0;
+let _pinchMidY = 0;
+
+document.addEventListener('touchstart', function(e) {
+  if (e.touches.length === 2) {
+    const t0 = e.touches[0], t1 = e.touches[1];
+    _pinchDist0  = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
+    _pinchScale0 = _currentScale;
+    const midX = (t0.clientX + t1.clientX) / 2;
+    const midY = (t0.clientY + t1.clientY) / 2;
+    _pinchMidX = (scrollWrap.scrollLeft + midX) / _currentScale;
+    _pinchMidY = (scrollWrap.scrollTop  + midY) / _currentScale;
+  }
+}, { passive: true });
+
+document.addEventListener('touchmove', function(e) {
+  if (e.touches.length !== 2 || _pinchDist0 === null) return;
+  e.preventDefault();
+  const t0 = e.touches[0], t1 = e.touches[1];
+  const dist     = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
+  const newScale = Math.min(3, Math.max(getMinScale(), _pinchScale0 * (dist / _pinchDist0)));
+  applyScale(newScale, _pinchMidX, _pinchMidY);
+}, { passive: false });
+
+document.addEventListener('touchend', function(e) {
+  if (e.touches.length < 2) _pinchDist0 = null;
+}, { passive: true });
+// Clamp scale when window is resized (e.g. user makes browser window bigger).
+window.addEventListener('resize', function() {
+  updateSpacer();
+  const min = getMinScale();
+  if (_currentScale < min) applyScale(min, surfW / 2, surfH / 2);
+});
 // ── END ZOOM ──────────────────────────────────────────────────────────────────
