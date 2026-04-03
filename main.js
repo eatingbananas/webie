@@ -1,5 +1,9 @@
 'use strict';
 
+// ── Landing position offset from centre (px) ──────────────────────────────────
+const LANDING_OFFSET_X = -300;   // positive = scroll right
+const LANDING_OFFSET_Y = -180;   // positive = scroll down
+
 const layer1 = document.getElementById('layer1');
 const layer2 = document.getElementById('layer2');
 const stage  = document.getElementById('stage');
@@ -323,8 +327,8 @@ function waitResolveAndCache() {
     buildImageCache(eW, eH);
 
     updateSpacer();
-    scrollWrap.scrollLeft = surfW / 2 - scrollWrap.clientWidth  / 2;
-    scrollWrap.scrollTop  = surfH / 2 - scrollWrap.clientHeight / 2;
+    scrollWrap.scrollLeft = surfW / 2 - scrollWrap.clientWidth  / 2 + LANDING_OFFSET_X;
+    scrollWrap.scrollTop  = surfH / 2 - scrollWrap.clientHeight / 2 + LANDING_OFFSET_Y;
 
     // ── Mobile width clamp ───────────────────────────────────────────────────
     // Only the stage (the scroll container) is narrowed — layers, canvas, and
@@ -1048,6 +1052,84 @@ contactDiv.innerHTML = 'helenyzh, heleniyzh@gmail.com, London, ';
 contactDiv.appendChild(gwLink);
 document.body.appendChild(contactDiv);
 
+// ── Zoom button overlay ───────────────────────────────────────────────────────
+const ZOOM_BTN_SIZE   = 18;   // font size in px — adjust here
+const ZOOM_BTN_GAP    = 10;   // gap between + and − in px — adjust here
+const ZOOM_STEP       = 0.5; // scale change per click
+const ZOOM_BTN_LEFT   = 14;   // px from left edge — adjust here
+
+const zoomWrap = document.createElement('div');
+Object.assign(zoomWrap.style, {
+  position:      'fixed',
+  left:          ZOOM_BTN_LEFT + 'px',
+  top:           '50%',
+  transform:     'translateY(-50%)',
+  zIndex:        '10',
+  display:       'flex',
+  flexDirection: 'column',
+  alignItems:    'center',
+  gap:           ZOOM_BTN_GAP + 'px',
+  pointerEvents: 'auto',
+  fontFamily:    '"Lucida Grande", Arial, sans-serif',
+  fontSize:      ZOOM_BTN_SIZE + 'px',
+  color:         '#333',
+  userSelect:    'none',
+});
+
+function _zoomFromCentre(newScale) {
+  const cx = scrollWrap.clientWidth  / 2;
+  const cy = scrollWrap.clientHeight / 2;
+  const stageX = (scrollWrap.scrollLeft + cx) / _currentScale;
+  const stageY = (scrollWrap.scrollTop  + cy) / _currentScale;
+  newScale = Math.max(getMinScale(), Math.min(3, newScale));
+  applyScale(newScale, stageX, stageY);
+  moveReveal(_lastMouseX, _lastMouseY);
+  _updateScaleBar();
+}
+
+const zoomInBtn = document.createElement('div');
+zoomInBtn.textContent = '+';
+Object.assign(zoomInBtn.style, { cursor: 'pointer', lineHeight: '1' });
+zoomInBtn.addEventListener('click', () => _zoomFromCentre(_currentScale + ZOOM_STEP));
+
+// Scale bar
+const scaleBarWrap = document.createElement('div');
+Object.assign(scaleBarWrap.style, {
+  width:      '2px',
+  height:     '60px',
+  background: 'rgba(0,0,0,0.12)',
+  position:   'relative',
+});
+const scaleBarFill = document.createElement('div');
+Object.assign(scaleBarFill.style, {
+  position:   'absolute',
+  bottom:     '0',
+  left:       '0',
+  width:      '100%',
+  background: '#555',
+  transition: 'height 0.15s ease',
+});
+scaleBarWrap.appendChild(scaleBarFill);
+
+function _updateScaleBar() {
+  const min = getMinScale();
+  const max = 3;
+  const pct = Math.max(0, Math.min(1, (_currentScale - min) / (max - min)));
+  scaleBarFill.style.height = Math.round(pct * 100) + '%';
+}
+
+const zoomOutBtn = document.createElement('div');
+zoomOutBtn.textContent = '−';
+Object.assign(zoomOutBtn.style, { cursor: 'pointer', lineHeight: '1' });
+zoomOutBtn.addEventListener('click', () => _zoomFromCentre(_currentScale - ZOOM_STEP));
+
+zoomWrap.appendChild(zoomInBtn);
+zoomWrap.appendChild(scaleBarWrap);
+zoomWrap.appendChild(zoomOutBtn);
+document.body.appendChild(zoomWrap);
+
+setTimeout(_updateScaleBar, 800);
+
 // ── MOBILE TOUCH FEATURE ──────────────────────────────────────────────────────
 // 1-finger touch: drags the figure. Page does not scroll. Erosion trail active.
 //   Figure stays at release position when finger lifts.
@@ -1326,8 +1408,8 @@ function previewDragStart(e) {
 
 function previewDragMove(e) {
   if (!_drag) return;
-  const nx = Math.round(_drag.startElX + e.pageX - _drag.startMouseX);
-  const ny = Math.round(_drag.startElY + e.pageY - _drag.startMouseY);
+  const nx = Math.round(_drag.startElX + (e.pageX - _drag.startMouseX) / _currentScale);
+  const ny = Math.round(_drag.startElY + (e.pageY - _drag.startMouseY) / _currentScale);
   _drag.p.l1El.style.left = nx + 'px';
   _drag.p.l1El.style.top  = ny + 'px';
   _drag.p.riEl.style.left = nx + 'px';
@@ -1372,8 +1454,8 @@ function previewTextDragStart(e) {
 
 function previewTextDragMove(e) {
   if (!_textDrag) return;
-  const nx = Math.round(_textDrag.startElX + e.pageX - _textDrag.startMouseX);
-  const ny = Math.round(_textDrag.startElY + e.pageY - _textDrag.startMouseY);
+  const nx = Math.round(_textDrag.startElX + (e.pageX - _textDrag.startMouseX) / _currentScale);
+  const ny = Math.round(_textDrag.startElY + (e.pageY - _textDrag.startMouseY) / _currentScale);
   _textDrag.t.el.style.left = nx + 'px';
   _textDrag.t.el.style.top  = ny + 'px';
   const lbl = previewLabels.find(l => l.t === _textDrag.t);
@@ -1421,8 +1503,8 @@ function previewGwDragStart(e) {
 
 function previewGwDragMove(e) {
   if (!_gwDrag) return;
-  const dx = e.pageX - _gwDrag.startMouseX;
-  const dy = e.pageY - _gwDrag.startMouseY;
+  const dx = (e.pageX - _gwDrag.startMouseX) / _currentScale;
+  const dy = (e.pageY - _gwDrag.startMouseY) / _currentScale;
   const nx = Math.round(_gwDrag.startElX + dx);
   const ny = Math.round(_gwDrag.startElY + dy);
   _gwDrag.gwEl.style.left = nx + 'px';
@@ -1491,6 +1573,7 @@ function applyScale(newScale, stageX, stageY) {
 
   scrollWrap.scrollLeft = newScrollLeft;
   scrollWrap.scrollTop  = newScrollTop;
+  if (typeof _updateScaleBar === 'function') _updateScaleBar();
 }
 
 // Block native browser pinch/ctrl-scroll zoom on all browsers.
