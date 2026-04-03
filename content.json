@@ -1,205 +1,125 @@
-{
-  "surface_width": 4320,
-  "surface_height": 3120,
-  "items": [
-    {
-      "id": "001",
-      "type": "project",
-      "title": "Marlborough Road",
-      "year": "2024",
-      "images": [
-        { "src": "WORKimages/2024_Marlborough_Road_1.jpg", "width": 240, "x": 1078, "y": 517 },
-        { "src": "WORKimages/2024_Marlborough_Road_2.jpg", "width": 208, "x": 859,  "y": 322 },
-        { "src": "WORKimages/2024_Marlborough_Road_3.jpg", "width": 176, "x": 1399, "y": 641 },
-        { "src": "WORKimages/2024_Marlborough_Road_4.jpg", "width": 192, "x": 821,  "y": 864 },
-        { "src": "WORKimages/2024_Marlborough_Road_5.jpg", "width": 168, "x": 1354, "y": 250 }
-      ],
-      "text": "Marlborough Road, 2024"
-    },
-    {
-      "id": "002",
-      "type": "project",
-      "title": "Jake Zhang",
-      "year": "2026",
-      "images": [
-        { "src": "WORKimages/2026_JakeZhang_1.jpg",  "width": 260, "x": 2362, "y": 1185 },
-        { "src": "WORKimages/2026_JakeZhang_2.jpg",  "width": 200, "x": 2667, "y": 912 },
-        { "src": "WORKimages/2026_JakeZhang_3.jpg",  "width": 192, "x": 2239, "y": 967},
-        { "src": "WORKimages/2026_JakeZhang_4.jpg",  "width": 198, "x": 1957, "y": 1231 },
-        { "src": "WORKimages/2026_Jake_Zhang_5.jpg", "width": 210, "x": 2453, "y": 1474 },
-        { "src": "WORKimages/2026_Jake_Zhang_6.jpg", "width": 194, "x": 2716, "y": 1194 }
-      ],
-      "text": "Jake Zhang, 2026"
-    },
-    {
-      "id": "003",
-      "type": "loose",
-      "title": "Female Photographer",
-      "year": "2024",
-      "images": [
-        { "src": "WORKimages/2024_Female_Photographer.jpg", "width": 288, "x": 2792, "y": 329 }
-      ],
-      "text": null
-    },
-    {
-      "id": "004",
-      "type": "found",
-      "title": "Daiva's Craft",
-      "year": 2024,
-      "images": [
-        { "src": "WORKimages/2024_DaivasCraft_1.jpeg", "width": 256, "x": 3881, "y": 625 }
-      ],
-      "text": "Daiva's Craft, 2024"
-    },
-    {
-      "id": "005",
-      "type": "loose",
-      "title": "",
-      "year": "2024",
-      "images": [
-        { "src": "WORKimages/2024_Jack_bed_photo.png", "width": 224, "x": 4287, "y": 244 }
-      ],
-      "text": ""
-    },
-    {
-      "id": "006",
-      "type": "project",
-      "title": "Ben Brody",
-      "year": "2025",
-      "images": [
-        { "src": "WORKimages/2025_Ben_Brody_1.jpg", "width": 240, "x": 4763, "y": 613 },
-        { "src": "WORKimages/2025_Ben_Brody_2.jpg", "width": 204, "x": 5062,  "y": 876 }
-      ],
-      "text": "Ben Brody, 2025"
-    },
-    {
-      "id": "007",
-      "type": "project",
-      "title": "JO",
-      "year": "2025",
-      "images": [
-        { "src": "WORKimages/2025_JO_1.jpg", "width": 216, "x": 4666, "y": 1405 },
-        { "src": "WORKimages/2025_JO_2.jpg", "width": 184, "x": 4324, "y": 1208 }
-      ],
-      "text": "JO, 2025"
-    },
-    {
-      "id": "008",
-      "type": "loose",
-      "title": "Body Terrace",
-      "year": "2024",
-      "images": [
-        { "src": "WORKimages/2024_Body_Terrace.jpg", "width": 216, "x": 3409, "y": 476 }
-      ],
-      "text": null
-    },
-    {
-      "id": "009",
-      "type": "found",
-      "title": "Safety Bag",
-      "year": 2024,
-      "images": [
-        { "src": "WORKimages/2024_Safety_1.jpg", "width": 223, "x": 646, "y": 1760 },
-        { "src": "WORKimages/2024_Safety_2.jpg", "width": 210, "x": 852, "y": 1502 }
-      ],
-      "text": "Poppy Morgan's Safety Belts, 2024"
-    },
-    {
-      "id": "010",
-      "type": "project",
-      "title": "Fishy",
-      "year": "2024",
-      "images": [
-        { "src": "WORKimages/2024_Fishy_1.jpg", "width": 160, "x": 2140, "y": 1834 },
-        { "src": "WORKimages/2024_Fishy_2.jpg", "width": 148, "x": 2284, "y": 2238 },
-        { "src": "WORKimages/2024_Fishy_3.jpg", "width": 152, "x": 2008, "y": 2139 },
-        { "src": "WORKimages/2024_Fishy_4.jpg", "width": 156, "x": 1811, "y": 1978 },
-        { "src": "WORKimages/2024_Fishy_5.jpg", "width": 148, "x": 2090, "y": 2426 }
-      ],
-      "text": "Fishy, 2024"
-    },
-    {
-      "id": "011",
-      "type": "project",
-      "title": "Main Cut",
-      "year": "2023",
-      "images": [
-        { "src": "WORKimages/2023_Main_cut.jpg", "width": 256, "x": 1313, "y": 1796 }
-      ],
-      "text": "Main Cuts, 2023"
-    },
-    {
-      "id": "012",
-      "type": "project",
-      "title": "ScreenShotThis",
-      "year": "2025",
-      "images": [
-        { "src": "WORKimages/2025_ScreenShotThis_1.jpg",   "width": 166, "x": 3071, "y": 1863 },
-        { "src": "WORKimages/2025_ScreenShotThis_2.jpg",   "width": 157, "x": 3214, "y": 2223 },
-        { "src": "WORKimages/2025_ScreenShotThis_Gif.gif", "width": 157, "x": 2705, "y": 1701 }
-      ],
-      "text": "Screen Shot This, 2025"
-    },
-    {
-      "id": "013",
-      "type": "project",
-      "title": "Car Nour",
-      "year": "2026",
-      "images": [
-        { "src": "WORKimages/2026_Car_Nour.png", "width": 238, "x": 1806, "y": 1463 }
-      ],
-      "text": "Car Nour, 2026"
-    },
-    {
-      "id": "015",
-      "type": "video",
-      "title": "Chanel Window",
-      "year": "2025",
-      "images": [
-        { "src": "WORKimages/2025_Chanel_window.mov", "width": 240, "x": 1464, "y": 1097 }
-      ],
-      "text": "Chanel Window, 2025"
-    },
-    {
-      "id": "016",
-      "type": "video",
-      "title": "Communistagram",
-      "year": "2024",
-      "images": [
-        { "src": "WORKimages/2024_Communistagram.mov", "width": 480, "x": 360, "y": 2261 }
-      ],
-      "text": "Communistagram, 2024"
-    },
-    {
-      "id": "017",
-      "type": "video",
-      "title": "Birthlook Reveal",
-      "year": "2025",
-      "images": [
-        { "src": "WORKimages/2025_BirthLookReveal.mov", "width": 400, "x": 3095, "y": 1277 },
-        { "src": "WORKimages/2025_Birthlook_1.jpeg",    "width": 160, "x": 3274, "y": 1117 },
-        { "src": "WORKimages/2025_Birthlook_2.jpeg",    "width": 164, "x": 3597, "y": 1420 },
-        { "src": "WORKimages/2025_Birthlook_3.jpeg",    "width": 128, "x": 2958, "y": 1610 }
-      ],
-      "text": "Birthlook Reveal,2025"
-    },
-    {
-      "id": "018",
-      "type": "project",
-      "title": "Oscar Ouyang SS26 BTS for iD",
-      "year": "2026",
-      "images": [
-        { "src": "WORKimages/2025_Ouyang_ss26_bts_hy-1.jpg", "width": 176, "x": 3924, "y": 1953 },
-        { "src": "WORKimages/2025_Ouyang_ss26_bts_hy-2.jpg", "width": 168, "x": 4130, "y": 2020 },
-        { "src": "WORKimages/2025_Ouyang_ss26_bts_hy-5.jpg", "width": 144, "x": 3750, "y": 2193 }
-      ],
-      "text": "Oscar Ouyang SS26 BTS for i-D, 2025",
-      "link": { "href": "https://i-d.co/article/oscar-ouyang-spring-2026/", "x": 3800, "y": 2200 }
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>helenyzh</title>
+  <link rel="icon" type="image/x-icon" href="/Assets/wayup.png">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="stage">
+    <div id="layer1"></div>
+    <div id="layer2"></div>
+  </div>
+  <script src="main.js"></script>
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js';
+    import { getDatabase, ref, push, onChildAdded } from 'https://www.gstatic.com/firebasejs/12.11.0/firebase-database.js';
+
+    const firebaseConfig = {
+      apiKey:            "AIzaSyD1bqIVIWr683C16T_GpJypaF04_jUmJa0",
+      authDomain:        "moringa-64ab0.firebaseapp.com",
+      databaseURL:       "https://moringa-64ab0-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId:         "moringa-64ab0",
+      storageBucket:     "moringa-64ab0.firebasestorage.app",
+      messagingSenderId: "106289519784",
+      appId:             "1:106289519784:web:40b4ec27482d895de1b69d"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db  = getDatabase(app);
+
+    // ── GuestWeb ──────────────────────────────────────────────────────────────
+    const GW_X = 3600;
+    const GW_Y = 1000;
+
+    // Expose coords so the main.js GuestWeb link can scroll to this position.
+    document.body.dataset.gwX = GW_X;
+    document.body.dataset.gwY = GW_Y;
+
+    const layer2 = document.getElementById('layer2');
+
+    const s = 'font-family:"Lucida Grande",Arial,sans-serif;font-size:11px;color:#333;';
+
+    const formEl = document.createElement('div');
+    formEl.id = 'guestweb-area';
+    Object.assign(formEl.style, {
+      position: 'absolute',
+      left:     GW_X + 'px',
+      top:      GW_Y + 'px',
+      zIndex:   '5',
+      width:    '190px',
+    });
+    formEl.innerHTML =
+      '<div style="' + s + 'margin-bottom:6px;">GuestWeb</div>' +
+      '<input id="gw-name" type="text" placeholder="name or alias" maxlength="60" style="display:block;width:100%;margin-bottom:4px;box-sizing:border-box;' + s + '">' +
+      '<input id="gw-site" type="text" placeholder="your site, optional" maxlength="200" style="display:block;width:100%;margin-bottom:6px;box-sizing:border-box;' + s + '">' +
+      '<button id="gw-submit" style="' + s + 'cursor:pointer;">sign</button>' +
+      '<div style="' + s + 'margin-top:6px;color:#888;">by signing, your name and link are visible to visitors</div>';
+
+    layer2.appendChild(formEl);
+
+    // Entries scatter below the form
+    const BASE_X = GW_X;
+    const BASE_Y = GW_Y + 120;
+    let entryCount = 0;
+
+    // Seeded RNG (xorshift32)
+    let _s = 4817;
+    function gwRand(min, max) {
+      _s ^= _s << 13; _s ^= _s >>> 17; _s ^= _s << 5; _s = _s >>> 0;
+      return min + (_s / 0x100000000) * (max - min);
     }
-  ],
-  "texts": [
-    { "id": "t001", "content": "An iPhone 13 phone size flip book. Flippable both ways. Flip content contains: a scroll through 10 self made instagram reels in 5 seconds; a future alphabet definition, and many others. It's a book you can just flip through, but you can also stop and read every page. This is my comment on the speed of consumption of image books these days, how it is being reshaped by our interaction with phones. Side by side I hope to discuss about reproduction, orginality and lineality, that exist in these two mediums. Together I bring them into this fragile object that gets reshaped and reformed by every single flip. Book launch event at Waste Store London, 10th Dec, 2024", "x": 2737, "y": 2162, "style": "small" },
-    { "id": "t002", "content": "",           "x": 1440, "y": 400,  "style": "large"  },
-    { "id": "t003", "content": "",  "x": 2000, "y": 1520, "style": "medium" }
-  ]
-}
+
+    function addEntry(name, website) {
+      const ex = Math.round(BASE_X + gwRand(-40, 140));
+      const ey = Math.round(BASE_Y + entryCount * 17 + gwRand(-2, 2));
+      entryCount++;
+
+      const el = document.createElement('div');
+      Object.assign(el.style, {
+        position:   'absolute',
+        left:       ex + 'px',
+        top:        ey + 'px',
+        zIndex:     '5',
+        fontFamily: '"Lucida Grande", Arial, sans-serif',
+        fontSize:   '11px',
+        color:      '#333',
+        whiteSpace: 'nowrap',
+      });
+
+      if (website && website.trim()) {
+        const href = /^https?:\/\//i.test(website.trim()) ? website.trim() : 'https://' + website.trim();
+        const a = document.createElement('a');
+        a.href        = href;
+        a.target      = '_blank';
+        a.rel         = 'noopener noreferrer';
+        a.textContent = name;
+        Object.assign(a.style, { color: '#336', textDecoration: 'underline' });
+        el.appendChild(a);
+      } else {
+        el.textContent = name;
+      }
+
+      layer2.appendChild(el);
+    }
+
+    // Load existing + live new entries
+    onChildAdded(ref(db, 'guestweb'), snap => {
+      const d = snap.val();
+      if (d && d.name) addEntry(d.name, d.website || '');
+    });
+
+    // Submit
+    document.getElementById('gw-submit').addEventListener('click', () => {
+      const name = (document.getElementById('gw-name').value || '').trim();
+      if (!name) return;
+      const website = (document.getElementById('gw-site').value || '').trim();
+      push(ref(db, 'guestweb'), { name, website, timestamp: Date.now() });
+      document.getElementById('gw-name').value = '';
+      document.getElementById('gw-site').value = '';
+    });
+  </script>
+</body>
+</html>
