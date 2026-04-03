@@ -374,14 +374,19 @@ function waitResolveAndCache() {
     scrollWrap.scrollLeft = surfW / 2 - scrollWrap.clientWidth  / 2 + LANDING_OFFSET_X;
     scrollWrap.scrollTop  = surfH / 2 - scrollWrap.clientHeight / 2 + LANDING_OFFSET_Y;
 
-    // ── Mobile width clamp ───────────────────────────────────────────────────
-    // Only the stage (the scroll container) is narrowed — layers, canvas, and
-    // the image cache keep their full computed dimensions so rendering is
-    // unaffected. overflow-x:hidden on stage prevents scrolling past bx1.
+    // ── Mobile scroll bounds ─────────────────────────────────────────────────
+    // Layers, canvas, and image cache keep their full computed dimensions.
+    // Only the stage dimensions and the spacer (which drives scrollWrap's
+    // scroll range) are clamped so the user cannot scroll to blank space.
     if (IS_MOBILE) {
       const narrowW = Math.round(bx1 + 80);
       stage.style.width     = narrowW + 'px';
+      stage.style.height    = surfH   + 'px';
       stage.style.overflowX = 'hidden';
+      stage.style.overflowY = 'hidden';
+      // Override the spacer so scrollWrap's scrollable area matches exactly.
+      spacer.style.width  = narrowW + 'px';
+      spacer.style.height = surfH   + 'px';
 
       // Reposition GuestWeb (created by the module in index.html) to fit
       // within the narrowed canvas.
@@ -554,6 +559,10 @@ const MOB_IMG_SCALE = 3;
 
 function mobilizeImage(img) {
   if (!IS_MOBILE) return img;
+  // Use manually placed mobile coordinates when present (mx/my/mw in content.json).
+  if (img.mx !== undefined) {
+    return { src: img.src, width: img.mw, x: img.mx, y: img.my };
+  }
   return {
     src:   img.src,
     width: Math.max(60, Math.round(img.width * MOB_X_SCALE * MOB_IMG_SCALE)),
@@ -960,8 +969,8 @@ fetch('content.json')
       } else {
         el.textContent = t.content;
       }
-      const tx = IS_MOBILE ? Math.round(t.x * MOB_X_SCALE) : t.x;
-      const ty = IS_MOBILE ? Math.round(t.y * MOB_Y_SCALE) : t.y;
+      const tx = IS_MOBILE ? (t.mx !== undefined ? t.mx : Math.round(t.x * MOB_X_SCALE)) : t.x;
+      const ty = IS_MOBILE ? (t.my !== undefined ? t.my : Math.round(t.y * MOB_Y_SCALE)) : t.y;
       Object.assign(el.style, {
         position:      'absolute',
         left:          tx + 'px',
@@ -1184,6 +1193,75 @@ zoomWrap.appendChild(zoomOutBtn);
 document.body.appendChild(zoomWrap);
 
 setTimeout(_updateScaleBar, 800);
+
+// ── MOBILE SCROLL INDICATORS ──────────────────────────────────────────────────
+// Horizontal bar: top-centre — shows left/right progress.
+// Vertical bar:   right-centre — shows up/down progress.
+// Both match the scale bar visual: 2px track, rgba fill, #555 fill, 0.15s ease.
+if (IS_MOBILE) {
+  const hScrollTrack = document.createElement('div');
+  Object.assign(hScrollTrack.style, {
+    position:      'fixed',
+    top:           '14px',
+    left:          '50%',
+    transform:     'translateX(-50%)',
+    width:         '60px',
+    height:        '2px',
+    background:    'rgba(0,0,0,0.12)',
+    zIndex:        '10',
+    pointerEvents: 'none',
+  });
+  const hScrollFill = document.createElement('div');
+  Object.assign(hScrollFill.style, {
+    position:   'absolute',
+    top:        '0',
+    left:       '0',
+    height:     '100%',
+    width:      '0%',
+    background: '#555',
+    transition: 'width 0.15s ease',
+  });
+  hScrollTrack.appendChild(hScrollFill);
+  document.body.appendChild(hScrollTrack);
+
+  const vScrollTrack = document.createElement('div');
+  Object.assign(vScrollTrack.style, {
+    position:      'fixed',
+    right:         '14px',
+    top:           '50%',
+    transform:     'translateY(-50%)',
+    width:         '2px',
+    height:        '60px',
+    background:    'rgba(0,0,0,0.12)',
+    zIndex:        '10',
+    pointerEvents: 'none',
+  });
+  const vScrollFill = document.createElement('div');
+  Object.assign(vScrollFill.style, {
+    position:   'absolute',
+    top:        '0',
+    left:       '0',
+    width:      '100%',
+    height:     '0%',
+    background: '#555',
+    transition: 'height 0.15s ease',
+  });
+  vScrollTrack.appendChild(vScrollFill);
+  document.body.appendChild(vScrollTrack);
+
+  function _updateScrollBars() {
+    const maxLeft = scrollWrap.scrollWidth  - scrollWrap.clientWidth;
+    const maxTop  = scrollWrap.scrollHeight - scrollWrap.clientHeight;
+    const hPct = maxLeft > 0 ? Math.max(0, Math.min(1, scrollWrap.scrollLeft / maxLeft)) : 0;
+    const vPct = maxTop  > 0 ? Math.max(0, Math.min(1, scrollWrap.scrollTop  / maxTop))  : 0;
+    hScrollFill.style.width  = Math.round(hPct * 100) + '%';
+    vScrollFill.style.height = Math.round(vPct * 100) + '%';
+  }
+
+  scrollWrap.addEventListener('scroll', _updateScrollBars, { passive: true });
+  setTimeout(_updateScrollBars, 800);
+}
+// ── END MOBILE SCROLL INDICATORS ─────────────────────────────────────────────
 
 // ── MOBILE TOUCH FEATURE ──────────────────────────────────────────────────────
 // 1-finger touch: drags the figure. Page does not scroll. Erosion trail active.
