@@ -137,6 +137,7 @@ const allTexts  = [];  // { el, textId }
 const viewRects = new Set();  // active video view regions { x, y, w, h }
 
 function buildImageCache(eW, eH) {
+  console.log('[DBG] buildImageCache called — eW:', eW, 'eH:', eH, '| caller:', new Error().stack.split('\n')[2]);
   const temp    = document.createElement('canvas');
   temp.width    = eW;
   temp.height   = eH;
@@ -321,6 +322,7 @@ function resolveProjectOverlaps() {
 // Wait for all layer1 images to load, resolve collisions, resize the surface to
 // fit all content, then build the frost cache and scroll to the new centre.
 function waitResolveAndCache() {
+  console.log('[DBG] waitResolveAndCache called | caller:', new Error().stack.split('\n')[2]);
   const imgs = Array.from(layer1.querySelectorAll('img'));
   let pending = imgs.length;
 
@@ -1165,16 +1167,20 @@ let _zoomAnchorY  = 0;
 let _zoomRafId    = null;
 
 function _zoomStep() {
-  _zoomRafId = null;
-  const diff = _targetScale - _currentScale;
-  if (Math.abs(diff) < 0.0015) {
-    applyScale(_targetScale, _zoomAnchorX, _zoomAnchorY);
+  try {
+    _zoomRafId = null;
+    const diff = _targetScale - _currentScale;
+    if (Math.abs(diff) < 0.0015) {
+      applyScale(_targetScale, _zoomAnchorX, _zoomAnchorY);
+      moveReveal(_lastMouseX, _lastMouseY);
+      return;
+    }
+    applyScale(_currentScale + diff * 0.1, _zoomAnchorX, _zoomAnchorY);
     moveReveal(_lastMouseX, _lastMouseY);
-    return;
+    _zoomRafId = requestAnimationFrame(_zoomStep);
+  } catch (err) {
+    console.error('[DBG] _zoomStep CRASHED:', err);
   }
-  applyScale(_currentScale + diff * 0.1, _zoomAnchorX, _zoomAnchorY);
-  moveReveal(_lastMouseX, _lastMouseY);
-  _zoomRafId = requestAnimationFrame(_zoomStep);
 }
 
 function _zoomFromCentre(newScale) {
@@ -1220,7 +1226,14 @@ function _updateScaleBar() {
 const zoomOutBtn = document.createElement('div');
 zoomOutBtn.textContent = '−';
 Object.assign(zoomOutBtn.style, { cursor: 'pointer', lineHeight: '1' });
-zoomOutBtn.addEventListener('click', () => _zoomFromCentre(_currentScale - ZOOM_STEP));
+zoomOutBtn.addEventListener('click', () => {
+  console.log('[DBG] zoom-out button clicked | _currentScale before:', _currentScale);
+  try {
+    _zoomFromCentre(_currentScale - ZOOM_STEP);
+  } catch (err) {
+    console.error('[DBG] zoom-out CRASHED:', err);
+  }
+});
 
 zoomWrap.appendChild(zoomInBtn);
 zoomWrap.appendChild(scaleBarWrap);
@@ -1725,7 +1738,9 @@ let _lastMouseY = window.innerHeight / 2;
 function getMinScale() {
   const refW = surfW || maxSurfW || 5400;
   const refH = surfH || maxSurfH || 3900;
-  return Math.max(scrollWrap.clientWidth / refW, scrollWrap.clientHeight / refH);
+  const result = Math.max(scrollWrap.clientWidth / refW, scrollWrap.clientHeight / refH);
+  console.log('[DBG] getMinScale =', result, '| surfW:', surfW, 'surfH:', surfH, 'maxSurfW:', maxSurfW, 'maxSurfH:', maxSurfH, '| vw:', scrollWrap.clientWidth, 'vh:', scrollWrap.clientHeight);
+  return result;
 }
 
 function updateSpacer() {
@@ -1736,6 +1751,7 @@ function updateSpacer() {
 function applyScale(newScale, stageX, stageY) {
   // stageX/stageY are unscaled stage coordinates — anchor point stays fixed.
   // Adjust scroll so the anchor point remains at the same viewport position.
+  console.log('[DBG] applyScale BEFORE: _currentScale =', _currentScale, '→ newScale =', newScale, '| stage w/h:', stage.style.width, stage.style.height);
   const newScrollLeft = stageX * (newScale - _currentScale) + scrollWrap.scrollLeft;
   const newScrollTop  = stageY * (newScale - _currentScale) + scrollWrap.scrollTop;
 
@@ -1746,6 +1762,7 @@ function applyScale(newScale, stageX, stageY) {
 
   scrollWrap.scrollLeft = newScrollLeft;
   scrollWrap.scrollTop  = newScrollTop;
+  console.log('[DBG] applyScale AFTER: _currentScale =', _currentScale, '| stage w/h:', stage.style.width, stage.style.height, '| spacer w/h:', spacer.style.width, spacer.style.height);
   if (typeof _updateScaleBar === 'function') _updateScaleBar();
 }
 
@@ -1818,9 +1835,15 @@ document.addEventListener('touchend', function(e) {
   if (e.touches.length < 2) _pinchDist0 = null;
 }, { passive: true });
 // Clamp scale when window is resized (e.g. user makes browser window bigger).
+let _dbgResizeCount = 0;
 window.addEventListener('resize', function() {
+  _dbgResizeCount++;
+  console.log('[DBG] resize fired (#' + _dbgResizeCount + ') innerW:', window.innerWidth, 'innerH:', window.innerHeight, '_currentScale:', _currentScale);
   updateSpacer();
   const min = getMinScale();
-  if (_currentScale < min) applyScale(min, surfW / 2, surfH / 2);
+  if (_currentScale < min) {
+    console.log('[DBG] resize: clamping scale from', _currentScale, 'to min', min);
+    applyScale(min, surfW / 2, surfH / 2);
+  }
 });
 // ── END ZOOM ──────────────────────────────────────────────────────────────────
