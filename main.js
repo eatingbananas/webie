@@ -48,6 +48,50 @@ Object.assign(revealInner.style, {
 layer3.appendChild(revealInner);
 document.body.appendChild(layer3);
 
+// ── Button label overlay ──────────────────────────────────────────────────────
+// Mirrors play/pause/view/unmute/read label text at z-index 4 (above layer3:3)
+// so it remains readable even when the silhouette hovers over a button.
+// Position is synced every frame via rAF using scrollWrap scroll + stage zoom.
+const _btnOverlay = document.createElement('div');
+Object.assign(_btnOverlay.style, {
+  position:      'fixed',
+  top:           '0',
+  left:          '0',
+  width:         '100vw',
+  height:        '100vh',
+  pointerEvents: 'none',
+  zIndex:        '4',
+  overflow:      'hidden',
+});
+document.body.appendChild(_btnOverlay);
+
+const _btnMirrors = [];  // { srcEl, el, absX, absY }
+
+function _addBtnMirror(srcEl, absX, absY) {
+  const el = document.createElement('div');
+  Object.assign(el.style, {
+    position:   'absolute',
+    fontFamily: '"Lucida Grande", Verdana, Geneva, sans-serif',
+    fontSize:   '10px',
+    color:      '#333',
+    whiteSpace: 'nowrap',
+  });
+  _btnOverlay.appendChild(el);
+  _btnMirrors.push({ srcEl, el, absX, absY });
+}
+
+(function _mirrorLoop() {
+  const sl = scrollWrap.scrollLeft;
+  const st = scrollWrap.scrollTop;
+  const z  = parseFloat(stage.style.zoom) || 1;
+  for (const m of _btnMirrors) {
+    m.el.style.left    = Math.round(m.absX * z - sl) + 'px';
+    m.el.style.top     = Math.round(m.absY * z - st) + 'px';
+    m.el.textContent   = m.srcEl.textContent;
+  }
+  requestAnimationFrame(_mirrorLoop);
+})();
+
 // ── Frost canvas ──────────────────────────────────────────────────────────────
 // layer1        — sharp images on #f0eeeb
 // frostCanvas   — quarter-scale, CSS-upscaled, CSS filter:blur(20px)
@@ -277,7 +321,7 @@ function waitResolveAndCache() {
   let pending = imgs.length;
 
   function finish() {
-    resolveProjectOverlaps();
+    if (!IS_MOBILE) resolveProjectOverlaps();
 
     // ── Compute bounding box of all placed images ────────────────────────────
     const SURFACE_PAD = 400;
@@ -499,11 +543,20 @@ const MOB_SURF_H = 4000;
 let MOB_X_SCALE = 1;
 let MOB_Y_SCALE = 1;
 
+// ── Mobile image size ─────────────────────────────────────────────────────────
+// Controls how large mobile images are relative to their desktop size.
+// 1.0 = same pixel width as the position-scaled desktop image (~37% of desktop).
+// 1.5 = 50% bigger than position-scaled  (~55% of desktop).
+// 2.0 = same physical size as desktop images (100% relative to desktop would be ~2.7).
+// Positions are NOT affected — only rendered width changes. The collision resolver
+// will automatically push overlapping images apart after scaling.
+const MOB_IMG_SCALE = 3;
+
 function mobilizeImage(img) {
   if (!IS_MOBILE) return img;
   return {
     src:   img.src,
-    width: Math.max(60, Math.round(img.width * MOB_X_SCALE)),
+    width: Math.max(60, Math.round(img.width * MOB_X_SCALE * MOB_IMG_SCALE)),
     x:     Math.round(img.x * MOB_X_SCALE),
     y:     Math.round(img.y * MOB_Y_SCALE),
   };
@@ -582,12 +635,11 @@ function placeItem(item) {
           color:         '#333',
           cursor:        'pointer',
           userSelect:    'none',
-          zIndex:        '11',
           pointerEvents: 'auto',
           padding:       '10px 14px',
           margin:        '-10px -14px',
         });
-        stage.appendChild(el);
+        layer2.appendChild(el);
         btnOffX += 70;
         return el;
       }
@@ -648,6 +700,10 @@ function placeItem(item) {
         }
       });
 
+      _addBtnMirror(playBtn, parseFloat(playBtn.style.left), parseFloat(playBtn.style.top));
+      _addBtnMirror(viewBtn, parseFloat(viewBtn.style.left), parseFloat(viewBtn.style.top));
+      _addBtnMirror(muteBtn, parseFloat(muteBtn.style.left), parseFloat(muteBtn.style.top));
+
       // ── Timeline: always visible, fixed at bottom of video ───────────────────
       const timelineRow = document.createElement('div');
       Object.assign(timelineRow.style, {
@@ -663,10 +719,9 @@ function placeItem(item) {
         fontSize:    '10px',
         color:       '#333',
         userSelect:  'none',
-        zIndex:      '11',
         pointerEvents: 'auto',
       });
-      stage.appendChild(timelineRow);
+      layer2.appendChild(timelineRow);
 
       const currentTimeEl = document.createElement('div');
       currentTimeEl.textContent = '0:00';
@@ -808,7 +863,6 @@ function placeItem(item) {
       color:         '#333',
       cursor:        'pointer',
       userSelect:    'none',
-      zIndex:        '11',
       pointerEvents: 'auto',
       padding:       '10px 14px',
       margin:        '-10px -14px',
@@ -847,7 +901,8 @@ function placeItem(item) {
       }, 12000);
     });
 
-    stage.appendChild(readBtn);
+    layer2.appendChild(readBtn);
+    _addBtnMirror(readBtn, parseFloat(readBtn.style.left), parseFloat(readBtn.style.top));
   }
 }
 
