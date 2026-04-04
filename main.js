@@ -645,7 +645,7 @@ function placeItem(item) {
           top:           btnY + 'px',
           fontFamily:    '"Lucida Grande", Verdana, Geneva, sans-serif',
           fontSize:      '10px',
-          color:         '#333',
+          color:         'transparent',  // invisible — mirror at z-index 4 handles display
           cursor:        'pointer',
           userSelect:    'none',
           pointerEvents: 'auto',
@@ -874,7 +874,7 @@ function placeItem(item) {
       top:           readBtnY + 'px',
       fontFamily:    '"Lucida Grande", Verdana, Geneva, sans-serif',
       fontSize:      '10px',
-      color:         '#333',
+      color:         'transparent',  // invisible — mirror at z-index 4 handles display
       cursor:        'pointer',
       userSelect:    'none',
       pointerEvents: 'auto',
