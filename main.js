@@ -107,6 +107,7 @@ function _addBtnMirror(srcEl, absX, absY) {
 // layer3        — silhouette cursor, fixed z-index 3, always sharp
 
 const frostCanvas = document.createElement('canvas');
+frostCanvas.id = 'frost-canvas';
 Object.assign(frostCanvas.style, {
   position:      'absolute',
   top:           '0',
@@ -629,8 +630,8 @@ function placeItem(item) {
     }
     const l1El = makeEl();
     const riEl = makeEl();
-    layer1.appendChild(l1El);
-    revealInner.appendChild(riEl);
+    _pendingL1.appendChild(l1El);
+    _pendingRI.appendChild(riEl);
     // For video: call play() explicitly after insertion — needed in some browsers
     // when autoplay attribute alone is not honoured for .mov files.
     if (isVideo) {
@@ -988,10 +989,16 @@ function placeUpdateLog(entries) {
       transform:       'rotate(' + rotation.toFixed(2) + 'deg)',
       transformOrigin: 'left top',
     });
-    layer1.appendChild(el);
+    _pendingL1.appendChild(el);
     allTexts.push({ el, textId: 'ul_' + i });
   });
 }
+
+// Fragments that collect all layer1/revealInner elements before they're shown.
+// Everything is appended to these until the final flush in waitResolveAndCache,
+// so the browser never paints a partial or pre-layout state.
+const _pendingL1 = document.createDocumentFragment();
+const _pendingRI = document.createDocumentFragment();
 
 // ── Fetch content ─────────────────────────────────────────────────────────────
 fetch('content.json')
@@ -1061,7 +1068,7 @@ fetch('content.json')
         textAlign:     t.align || 'left',
         pointerEvents: 'none',
       });
-      layer1.appendChild(el);
+      _pendingL1.appendChild(el);
       allTexts.push({ el, textId: t.id });
     });
 
@@ -1111,8 +1118,8 @@ fetch('content.json')
           }
           const l1El = makeDumpEl();
           const riEl = makeDumpEl();
-          layer1.appendChild(l1El);
-          revealInner.appendChild(riEl);
+          _pendingL1.appendChild(l1El);
+          _pendingRI.appendChild(riEl);
           allPlaced.push({ src, x, y, width: w, itemId: 'dump_' + filename, itemType: 'loose', l1El, riEl });
         });
 
@@ -1141,7 +1148,7 @@ fetch('content.json')
                 maxWidth:      '280px',
                 pointerEvents: 'none',
               });
-              layer1.appendChild(el);
+              _pendingL1.appendChild(el);
               allTexts.push({ el, textId: 'dump_' + filename });
             })
             .catch(() => {});
@@ -1153,6 +1160,9 @@ fetch('content.json')
           .then(entries => placeUpdateLog(entries));
 
         Promise.all([...txtPromises, ulPromise]).then(() => {
+          // Flush all layer1/revealInner elements at once — final positions already set.
+          layer1.appendChild(_pendingL1);
+          revealInner.appendChild(_pendingRI);
           waitResolveAndCache();
           drawFrost();
         });
@@ -1191,8 +1201,11 @@ async function initCursor() {
   layer3.style.maskRepeat         = 'no-repeat';
   layer3.style.maskPosition       = '0 0';
 
-  document.addEventListener('mousemove',  e => { _lastMouseX = e.clientX; _lastMouseY = e.clientY; moveReveal(e.clientX, e.clientY); });
-  document.addEventListener('mouseleave', hideReveal);
+  // Skip on touch devices — taps fire synthetic mousemove that would teleport the figure.
+  if (!IS_MOBILE) {
+    document.addEventListener('mousemove',  e => { _lastMouseX = e.clientX; _lastMouseY = e.clientY; moveReveal(e.clientX, e.clientY); });
+    document.addEventListener('mouseleave', hideReveal);
+  }
   // Touch listeners are added by MOBILE TOUCH FEATURE below
 }
 
@@ -1578,7 +1591,7 @@ function mob_onScroll() {
 
 function mob_showHint() {
   const hint = document.createElement('div');
-  hint.innerHTML = 'drag figure to look, scroll to navigate<br><span id="mob-hint-pc">or experience differently on PC...</span>';
+  hint.innerHTML = 'drag figure to look<br>scroll to navigate<br><span id="mob-hint-pc">or experience differently on PC...</span>';
   Object.assign(hint.style, {
     position:      'fixed',
     bottom:        '32px',
@@ -1615,32 +1628,60 @@ if ('ontouchstart' in window) {
     return clientX >= r.left && clientX <= r.right && clientY >= r.top && clientY <= r.bottom;
   }
 
-  // Touchstart on layer3 only — drag the figure. Scrolling is unaffected elsewhere.
-  // On touchstart, record the offset from the touch point to the figure centre so
-  // dragging moves the figure smoothly without snapping its centre to the finger.
-  let _mobDragOffX = 0;
-  let _mobDragOffY = 0;
+  let _mobDragOffX    = 0;
+  let _mobDragOffY    = 0;
+  let _figDragActive  = false;
+  let _velX = 0, _velY = 0;
+  let _prevT = 0, _prevX = 0, _prevY = 0;
+  let _currT = 0, _currX = 0, _currY = 0;
+  let _momentumRaf    = null;
 
+  function _stopMomentum() {
+    if (_momentumRaf !== null) { cancelAnimationFrame(_momentumRaf); _momentumRaf = null; }
+  }
+
+  function _startMomentum() {
+    _stopMomentum();
+    const FRICTION = 0.90;
+    const MIN_VEL  = 0.4;
+    function step() {
+      _velX *= FRICTION;
+      _velY *= FRICTION;
+      if (Math.abs(_velX) < MIN_VEL && Math.abs(_velY) < MIN_VEL) { _momentumRaf = null; return; }
+      mob_pos.x += _velX;
+      mob_pos.y += _velY;
+      moveReveal(mob_pos.x, mob_pos.y);
+      _momentumRaf = requestAnimationFrame(step);
+    }
+    _momentumRaf = requestAnimationFrame(step);
+  }
+
+  // Drag only starts when touchstart lands on the figure (layer3).
   layer3.addEventListener('touchstart', e => {
     if (e.touches.length !== 1) return;
     const t = e.touches[0];
     if (_overGuestWeb(t.clientX, t.clientY)) {
-      // Touch is on the GuestWeb form — let the browser handle it normally.
-      // Set pointer-events:none so the tap falls through to the inputs/links below.
       layer3.style.pointerEvents = 'none';
       return;
     }
-    e.preventDefault();  // block scroll only while dragging the figure
-    // Record offset so the figure doesn't jump to the touch point.
+    e.preventDefault();
+    _stopMomentum();
+    _figDragActive = true;
+    _velX = 0; _velY = 0;
     _mobDragOffX = mob_pos.x - t.clientX;
     _mobDragOffY = mob_pos.y - t.clientY;
+    _prevT = _currT = performance.now();
+    _prevX = _currX = t.clientX;
+    _prevY = _currY = t.clientY;
   }, { passive: false });
 
   layer3.addEventListener('touchmove', e => {
-    if (e.touches.length !== 1) return;
+    if (e.touches.length !== 1 || !_figDragActive) return;
     const t = e.touches[0];
     if (_overGuestWeb(t.clientX, t.clientY)) return;
     e.preventDefault();
+    _prevT = _currT; _prevX = _currX; _prevY = _currY;
+    _currT = performance.now(); _currX = t.clientX; _currY = t.clientY;
     mob_pos.x = t.clientX + _mobDragOffX;
     mob_pos.y = t.clientY + _mobDragOffY;
     moveReveal(mob_pos.x, mob_pos.y);
@@ -1656,7 +1697,20 @@ if ('ontouchstart' in window) {
     }
   }, { passive: true, capture: true });
 
-  // touchend: figure stays where released — no action needed.
+  // On release: compute velocity from last two tracked points and start momentum.
+  layer3.addEventListener('touchend', () => {
+    if (!_figDragActive) return;
+    _figDragActive = false;
+    const dt = _currT - _prevT;
+    if (dt > 0 && dt < 120) {
+      _velX = (_currX - _prevX) / dt * 16;  // scale to ~60fps frame delta
+      _velY = (_currY - _prevY) / dt * 16;
+      const speed = Math.hypot(_velX, _velY);
+      const MAX   = 35;
+      if (speed > MAX) { _velX *= MAX / speed; _velY *= MAX / speed; }
+      _startMomentum();
+    }
+  }, { passive: true });
 
   scrollWrap.addEventListener('scroll', mob_onScroll, { passive: true });
 
