@@ -2017,11 +2017,17 @@ document.addEventListener('gesturestart', function(e) {
 
 document.addEventListener('gesturechange', function(e) {
   e.preventDefault();
-  const newScale = Math.min(3, Math.max(getMinScale(), _gestureScale0 * e.scale));
-  const originX  = (scrollWrap.scrollLeft + e.clientX) / _currentScale;
-  const originY  = (scrollWrap.scrollTop  + e.clientY) / _currentScale;
-  applyScale(newScale, originX, originY);
-  moveReveal(_lastMouseX, _lastMouseY);
+  try {
+    const min      = getMinScale();
+    const newScale = Math.min(3, Math.max(min, _gestureScale0 * e.scale));
+    if (!isFinite(newScale) || newScale < min) return;
+    const originX  = (scrollWrap.scrollLeft + e.clientX) / _currentScale;
+    const originY  = (scrollWrap.scrollTop  + e.clientY) / _currentScale;
+    applyScale(newScale, originX, originY);
+    moveReveal(_lastMouseX, _lastMouseY);
+  } catch (err) {
+    // swallow
+  }
 }, { passive: false });
 
 document.addEventListener('gestureend', function(e) {
@@ -2064,10 +2070,18 @@ document.addEventListener('touchstart', function(e) {
 document.addEventListener('touchmove', function(e) {
   if (e.touches.length !== 2 || _pinchDist0 === null) return;
   e.preventDefault();
-  const t0 = e.touches[0], t1 = e.touches[1];
-  const dist     = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
-  const newScale = Math.min(3, Math.max(getMinScale(), _pinchScale0 * (dist / _pinchDist0)));
-  applyScale(newScale, _pinchMidX, _pinchMidY);
+  try {
+    const t0 = e.touches[0], t1 = e.touches[1];
+    const dist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
+    if (!dist || dist <= 0) return;
+    const min      = getMinScale();
+    const raw      = _pinchScale0 * (dist / _pinchDist0);
+    const newScale = Math.min(3, Math.max(min, raw));
+    if (!isFinite(newScale) || newScale < min) return;
+    applyScale(newScale, _pinchMidX, _pinchMidY);
+  } catch (err) {
+    // swallow — never let a zoom calc crash the page
+  }
 }, { passive: false });
 
 document.addEventListener('touchend', function(e) {
