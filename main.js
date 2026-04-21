@@ -607,11 +607,12 @@ function placeItem(item) {
       let el;
       if (isVideo) {
         el = document.createElement('video');
-        el.src         = src;
+        el.dataset.src = src;  // real src stored here; loaded lazily by observer
         el.autoplay    = true;
         el.loop        = true;
         el.muted       = true;
         el.playsInline = true;
+        el.preload     = 'none';
         el.setAttribute('playsinline', '');
         el.setAttribute('webkit-playsinline', '');  // older Safari
         el.controls    = false;
@@ -634,8 +635,22 @@ function placeItem(item) {
     // when autoplay attribute alone is not honoured for .mov files.
     if (isVideo) {
       riEl.muted = true;  // frost copy is always muted — visual only, never produces sound
-      l1El.play().catch(() => {});
-      riEl.play().catch(() => {});
+
+      // Lazy-load: observe l1El; when it enters viewport load both copies then play.
+      const videoObserver = new IntersectionObserver((entries, obs) => {
+        if (!entries[0].isIntersecting) return;
+        obs.disconnect();
+        const lazySrc = l1El.dataset.src;
+        if (lazySrc) {
+          l1El.src    = lazySrc;
+          riEl.src    = lazySrc;
+          l1El.preload = 'auto';
+          riEl.preload = 'auto';
+        }
+        l1El.play().catch(() => {});
+        riEl.play().catch(() => {});
+      }, { root: scrollWrap, rootMargin: '200px' });
+      videoObserver.observe(l1El);
     }
     const placedEntry = { src, x, y, width, itemId: item.id, itemType: item.type || '', l1El, riEl, btns: [], timelineEl: null };
     allPlaced.push(placedEntry);
@@ -1218,6 +1233,7 @@ requestAnimationFrame(restoreLoop);
 function tryPlayAllVideos() {
   let anyPaused = false;
   document.querySelectorAll('video').forEach(v => {
+    if (!v.src) return;  // not yet lazy-loaded — skip
     if (v.paused) {
       anyPaused = true;
       v.play().catch(() => {});
