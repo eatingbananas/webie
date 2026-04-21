@@ -6,6 +6,7 @@ const LANDING_OFFSET_Y = -180;   // positive = scroll down
 
 // Declared early so _mirrorLoop IIFE can read it before the zoom block below.
 let _currentScale = 1;
+let _fixedMinScale = null;  // set once on mobile after layout; never recalculated
 
 const layer1 = document.getElementById('layer1');
 const layer2 = document.getElementById('layer2');
@@ -88,8 +89,10 @@ function _addBtnMirror(srcEl, absX, absY) {
   const st = scrollWrap.scrollTop;
   const z  = _currentScale;
   for (const m of _btnMirrors) {
-    m.el.style.left        = Math.round(m.absX * z - sl) + 'px';
-    m.el.style.top         = Math.round(m.absY * z - st) + 'px';
+    const ax = parseFloat(m.srcEl.style.left)  || m.absX;
+    const ay = parseFloat(m.srcEl.style.top)   || m.absY;
+    m.el.style.left        = Math.round(ax * z - sl) + 'px';
+    m.el.style.top         = Math.round(ay * z - st) + 'px';
     m.el.style.fontSize    = Math.round(10 * z) + 'px';
     m.el.textContent       = m.srcEl.textContent;
   }
@@ -243,6 +246,17 @@ function resolveProjectOverlaps() {
     const ny = Math.round(parseFloat(p.l1El.style.top)  + dy);
     p.l1El.style.left = nx + 'px';  p.l1El.style.top = ny + 'px';
     p.riEl.style.left = nx + 'px';  p.riEl.style.top = ny + 'px';
+    // Move buttons and timeline with the video.
+    if (p.btns) {
+      for (const btn of p.btns) {
+        btn.style.left = Math.round(parseFloat(btn.style.left) + dx) + 'px';
+        btn.style.top  = Math.round(parseFloat(btn.style.top)  + dy) + 'px';
+      }
+    }
+    if (p.timelineEl) {
+      p.timelineEl.style.left = Math.round(parseFloat(p.timelineEl.style.left) + dx) + 'px';
+      p.timelineEl.style.top  = Math.round(parseFloat(p.timelineEl.style.top)  + dy) + 'px';
+    }
   }
 
   // Also move labels that belong to the same project as a shifted image.
@@ -322,7 +336,6 @@ function resolveProjectOverlaps() {
 // Wait for all layer1 images to load, resolve collisions, resize the surface to
 // fit all content, then build the frost cache and scroll to the new centre.
 function waitResolveAndCache() {
-  console.log('[DBG] waitResolveAndCache called | caller:', new Error().stack.split('\n')[2]);
   const imgs = Array.from(layer1.querySelectorAll('img'));
   let pending = imgs.length;
 
@@ -404,6 +417,9 @@ function waitResolveAndCache() {
       };
       setTimeout(_posGW, 0);
       setTimeout(_posGW, 600);  // retry after Firebase entries may have shifted layout
+
+      // Fix min scale once — never recalculate on mobile.
+      _fixedMinScale = getMinScale();
     }
   }
 
@@ -621,7 +637,8 @@ function placeItem(item) {
       l1El.play().catch(() => {});
       riEl.play().catch(() => {});
     }
-    allPlaced.push({ src, x, y, width, itemId: item.id, itemType: item.type || '', l1El, riEl });
+    const placedEntry = { src, x, y, width, itemId: item.id, itemType: item.type || '', l1El, riEl, btns: [], timelineEl: null };
+    allPlaced.push(placedEntry);
 
     // For videos: always-visible text buttons at random position + timeline at bottom.
     if (isVideo) {
@@ -688,10 +705,12 @@ function placeItem(item) {
       viewBtn.addEventListener('click', () => {
         if (_viewRect) { stopView(); return; }
         viewBtn.textContent = 'hide';
+        const liveX = parseFloat(l1El.style.left);
+        const liveY = parseFloat(l1El.style.top);
         const vidH = l1El.videoHeight > 0
           ? Math.round(l1El.videoHeight * (width / l1El.videoWidth))
           : Math.round(width * 0.75);
-        _viewRect = { x, y, w: width, h: vidH };
+        _viewRect = { x: liveX, y: liveY, w: width, h: vidH };
         viewRects.add(_viewRect);
         const dur = (l1El.duration && isFinite(l1El.duration))
           ? l1El.duration * 1000 : 5000;
@@ -717,6 +736,7 @@ function placeItem(item) {
       _addBtnMirror(playBtn, parseFloat(playBtn.style.left), parseFloat(playBtn.style.top));
       _addBtnMirror(viewBtn, parseFloat(viewBtn.style.left), parseFloat(viewBtn.style.top));
       _addBtnMirror(muteBtn, parseFloat(muteBtn.style.left), parseFloat(muteBtn.style.top));
+      placedEntry.btns.push(playBtn, viewBtn, muteBtn);
 
       // ── Timeline: always visible, fixed at bottom of video ───────────────────
       const timelineRow = document.createElement('div');
@@ -736,6 +756,7 @@ function placeItem(item) {
         pointerEvents: 'auto',
       });
       layer2.appendChild(timelineRow);
+      placedEntry.timelineEl = timelineRow;
 
       const currentTimeEl = document.createElement('div');
       currentTimeEl.textContent = '0:00';
@@ -920,6 +941,43 @@ function placeItem(item) {
   }
 }
 
+// ── UpdateLog scatter layer ───────────────────────────────────────────────────
+// Zone centre where update entries are scattered (desktop surface coords).
+const UL_ZONE_X = 3600;
+const UL_ZONE_Y = 2700;
+
+function placeUpdateLog(entries) {
+  if (!entries || entries.length === 0) return;
+  entries.forEach((entry, i) => {
+    const rand     = makeRand(strToSeed('ul_' + i + '_' + entry.date));
+    const isLatest = i === 0;
+    let x = isLatest ? UL_ZONE_X : Math.round(UL_ZONE_X + rand(-220, 220));
+    let y = isLatest ? UL_ZONE_Y : Math.round(UL_ZONE_Y + rand(-160, 160));
+    if (IS_MOBILE) { x = Math.round(x * MOB_X_SCALE); y = Math.round(y * MOB_Y_SCALE); }
+    const rotation = rand(-5, 5);
+    const text = (isLatest ? 'last updated ' : '') + entry.date + (entry.note ? ' \u2014 ' + entry.note : '');
+    const el = document.createElement('div');
+    el.className      = 'surface-text';
+    el.dataset.textId = 'ul_' + i;
+    el.textContent    = text;
+    Object.assign(el.style, {
+      position:        'absolute',
+      left:            x + 'px',
+      top:             y + 'px',
+      fontFamily:      '"Lucida Grande", Arial, sans-serif',
+      fontSize:        isLatest ? '12px' : '10px',
+      color:           '#333',
+      opacity:         isLatest ? '0.65' : String(rand(0.25, 0.42).toFixed(2)),
+      whiteSpace:      'nowrap',
+      pointerEvents:   'none',
+      transform:       'rotate(' + rotation.toFixed(2) + 'deg)',
+      transformOrigin: 'left top',
+    });
+    layer1.appendChild(el);
+    allTexts.push({ el, textId: 'ul_' + i });
+  });
+}
+
 // ── Fetch content ─────────────────────────────────────────────────────────────
 fetch('content.json')
   .then(r => {
@@ -968,11 +1026,10 @@ fetch('content.json')
       const el = document.createElement('div');
       el.className      = 'surface-text';
       el.dataset.textId = t.id;
-      const useRagged   = t.id === 't001' && t.content;
-      if (useRagged) {
-        el.innerHTML = raggedWrap(t.content, t.id, 6);
+      if (Array.isArray(t.lines)) {
+        el.innerHTML = t.lines.map(l => l.replace(/&/g,'&amp;').replace(/</g,'&lt;')).join('<br>');
       } else {
-        el.textContent = t.content;
+        el.textContent = t.content || '';
       }
       const tx = IS_MOBILE ? (t.mx !== undefined ? t.mx : Math.round(t.x * MOB_X_SCALE)) : t.x;
       const ty = IS_MOBILE ? (t.my !== undefined ? t.my : Math.round(t.y * MOB_Y_SCALE)) : t.y;
@@ -983,24 +1040,115 @@ fetch('content.json')
         fontFamily:    '"Lucida Grande", Arial, sans-serif',
         fontSize:      fontSizes[t.style] || '11px',
         color:         '#333',
-        lineHeight:    '1.5',
-        maxWidth:      useRagged ? '420px' : '160px',
+        lineHeight:    t.lineHeight !== undefined ? String(t.lineHeight) : '1.5',
+        maxWidth:      (t.maxWidth ? t.maxWidth + 'px' : '160px'),
         wordSpacing:   '3px',
-        textAlign:     'left',
+        textAlign:     t.align || 'left',
         pointerEvents: 'none',
       });
       layer1.appendChild(el);
       allTexts.push({ el, textId: t.id });
     });
 
-    waitResolveAndCache();
-    drawFrost();
+    // ── DUMPimages loader ─────────────────────────────────────────────────────
+    // Fetch DUMPimages/manifest.json, scatter images and .txt files across the
+    // stage alongside portfolio items. Positions are seeded by filename so they
+    // stay stable across reloads. Call waitResolveAndCache after all are placed.
+    fetch('DUMPimages/manifest.json')
+      .then(r => r.ok ? r.json() : [])
+      .catch(() => [])
+      .then(files => {
+        const imgExts = /\.(jpe?g|png|gif|webp|svg)$/i;
+        const txtExts = /\.txt$/i;
+        const imgFiles = files.filter(f => imgExts.test(f));
+        const txtFiles = files.filter(f => txtExts.test(f));
+
+        // Place images — grid-cell distribution so right/bottom are evenly covered.
+        // Divide the surface into a grid with one cell per image, then randomise
+        // position within each cell so images stay stable but spread evenly.
+        const surfaceW = IS_MOBILE ? MOB_SURF_W : data.surface_width;
+        const surfaceH = IS_MOBILE ? MOB_SURF_H : data.surface_height;
+        const cols = Math.ceil(Math.sqrt(imgFiles.length));
+        const rows = Math.ceil(imgFiles.length / cols);
+        const cellW = Math.floor(surfaceW / cols);
+        const cellH = Math.floor(surfaceH / rows);
+
+        imgFiles.forEach((filename, i) => {
+          const col   = i % cols;
+          const row   = Math.floor(i / cols);
+          const seed  = strToSeed('dump_' + filename);
+          const rand  = makeRand(seed);
+          const w     = Math.round(rand(120, 240));
+          const pad   = 60;
+          const x     = Math.round(col * cellW + rand(pad, Math.max(pad + 1, cellW - w - pad)));
+          const y     = Math.round(row * cellH + rand(pad, Math.max(pad + 1, cellH - 240 - pad)));
+          const src   = 'DUMPimages/' + filename;
+
+          function makeDumpEl() {
+            const el = document.createElement('img');
+            el.src            = src;
+            el.style.position = 'absolute';
+            el.style.left     = x + 'px';
+            el.style.top      = y + 'px';
+            el.style.width    = w + 'px';
+            el.style.height   = 'auto';
+            return el;
+          }
+          const l1El = makeDumpEl();
+          const riEl = makeDumpEl();
+          layer1.appendChild(l1El);
+          revealInner.appendChild(riEl);
+          allPlaced.push({ src, x, y, width: w, itemId: 'dump_' + filename, itemType: 'loose', l1El, riEl });
+        });
+
+        // Place text files — fetch content, render as surface-text at random pos.
+        const txtPromises = txtFiles.map(filename => {
+          const seed = strToSeed('dump_' + filename);
+          const rand = makeRand(seed);
+          const x    = Math.round(rand(80, (IS_MOBILE ? MOB_SURF_W : data.surface_width)  - 300));
+          const y    = Math.round(rand(80, (IS_MOBILE ? MOB_SURF_H : data.surface_height) - 200));
+          return fetch('DUMPimages/' + filename)
+            .then(r => r.ok ? r.text() : '')
+            .then(text => {
+              if (!text.trim()) return;
+              const el = document.createElement('div');
+              el.className      = 'surface-text';
+              el.dataset.textId = 'dump_' + filename;
+              el.textContent    = text.trim();
+              Object.assign(el.style, {
+                position:      'absolute',
+                left:          x + 'px',
+                top:           y + 'px',
+                fontFamily:    '"Lucida Grande", Arial, sans-serif',
+                fontSize:      '11px',
+                color:         '#333',
+                lineHeight:    '1.5',
+                maxWidth:      '280px',
+                pointerEvents: 'none',
+              });
+              layer1.appendChild(el);
+              allTexts.push({ el, textId: 'dump_' + filename });
+            })
+            .catch(() => {});
+        });
+
+        const ulPromise = fetch('updatelog.json')
+          .then(r => r.ok ? r.json() : [])
+          .catch(() => [])
+          .then(entries => placeUpdateLog(entries));
+
+        Promise.all([...txtPromises, ulPromise]).then(() => {
+          waitResolveAndCache();
+          drawFrost();
+        });
+      });
+    // ── END DUMPimages loader ─────────────────────────────────────────────────
   })
   .catch(err => console.error('content.json error:', err.message));
 
 // ── Cursor mechanic ───────────────────────────────────────────────────────────
 const FIG_H   = 250;
-const FIG_SRC = 'Assets/Human.png';
+const FIG_SRC = 'Assets/BOB.png';
 let figW = 0;
 
 async function initCursor() {
@@ -1101,7 +1249,7 @@ Object.assign(contactDiv.style, {
   pointerEvents: 'auto',
 });
 const gwLink = document.createElement('span');
-gwLink.textContent = 'GuestWeb';
+gwLink.textContent = 'Guest';
 Object.assign(gwLink.style, {
   textDecoration: 'underline',
   cursor:         'pointer',
@@ -1110,31 +1258,109 @@ gwLink.addEventListener('click', () => {
   const gwEl = document.getElementById('guestweb-area');
   if (!gwEl) return;
 
-  // Scroll to GuestWeb using stage coordinates × scale, bypassing scrollIntoView
-  // which doesn't understand CSS transform:scale.
-  function scrollToGuestWeb() {
-    const gwX = parseFloat(gwEl.style.left) || 0;
-    const gwY = parseFloat(gwEl.style.top)  || 0;
-    const gwW = gwEl.offsetWidth  || 190;
-    const gwH = gwEl.offsetHeight || 120;
-    const z   = _currentScale;
-    scrollWrap.scrollLeft = gwX * z + (gwW * z) / 2 - scrollWrap.clientWidth  / 2;
-    scrollWrap.scrollTop  = gwY * z + (gwH * z) / 2 - scrollWrap.clientHeight / 2;
+  const gwX = parseFloat(gwEl.style.left) || 0;
+  const gwY = parseFloat(gwEl.style.top)  || 0;
+  const gwW = gwEl.offsetWidth  || 190;
+  const gwH = gwEl.offsetHeight || 120;
+
+  // Target: scale 1, centred on guestweb-area.
+  const targetScale      = Math.max(1, _currentScale);
+  const targetScrollLeft = gwX * targetScale + (gwW * targetScale) / 2 - scrollWrap.clientWidth  / 2;
+  const targetScrollTop  = gwY * targetScale + (gwH * targetScale) / 2 - scrollWrap.clientHeight / 2;
+
+  if (_currentScale >= 1) {
+    // Already at or above scale 1 — just scroll smoothly, no zoom change.
+    scrollWrap.scrollTo({ left: targetScrollLeft, top: targetScrollTop, behavior: 'smooth' });
+    return;
   }
 
-  if (_currentScale < 0.8) {
-    const gwX = parseFloat(gwEl.style.left) || 0;
-    const gwY = parseFloat(gwEl.style.top)  || 0;
-    applyScale(0.8, gwX, gwY);
-    setTimeout(scrollToGuestWeb, 50);
-  } else {
-    scrollToGuestWeb();
+  // Zoomed out — animate zoom + scroll simultaneously over ~1.5 s.
+  const DURATION        = 1500;
+  const startScale      = _currentScale;
+  const startScrollLeft = scrollWrap.scrollLeft;
+  const startScrollTop  = scrollWrap.scrollTop;
+  const startTime       = performance.now();
+
+  function easeInOut(t) {
+    return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
   }
+
+  function animFrame(now) {
+    const raw = Math.min(1, (now - startTime) / DURATION);
+    const t   = easeInOut(raw);
+
+    const scale = startScale + (targetScale - startScale) * t;
+    const sl    = startScrollLeft + (targetScrollLeft - startScrollLeft) * t;
+    const st    = startScrollTop  + (targetScrollTop  - startScrollTop)  * t;
+
+    _currentScale = scale;
+    stage.style.transformOrigin = '0 0';
+    stage.style.transform       = 'scale(' + scale + ')';
+    updateSpacer();
+    scrollWrap.scrollLeft = sl;
+    scrollWrap.scrollTop  = st;
+    if (typeof _updateScaleBar === 'function') _updateScaleBar();
+
+    if (raw < 1) requestAnimationFrame(animFrame);
+  }
+
+  requestAnimationFrame(animFrame);
 });
 
 contactDiv.innerHTML = 'helenyzh, heleniyzh@gmail.com, London, ';
 contactDiv.appendChild(gwLink);
 document.body.appendChild(contactDiv);
+
+// ── Bookmark icon ─────────────────────────────────────────────────────────────
+(function () {
+  const bookmarkEl = document.createElement('div');
+  Object.assign(bookmarkEl.style, {
+    position:   'fixed',
+    top:        '10px',
+    right:      '10px',
+    zIndex:     '10',
+    fontFamily: '"Lucida Grande", Arial, sans-serif',
+    fontSize:   '18px',
+    color:      '#ccc',
+    cursor:     'pointer',
+    lineHeight: '1',
+    userSelect: 'none',
+    pointerEvents: 'auto',
+  });
+
+  function render(filled) {
+    bookmarkEl.innerHTML = filled
+      ? '<svg width="14" height="18" viewBox="0 0 14 18" fill="#333" xmlns="http://www.w3.org/2000/svg"><path d="M0 0h14v18l-7-5-7 5V0z"/></svg>'
+      : '<svg width="14" height="18" viewBox="0 0 14 18" fill="none" stroke="#333" stroke-width="1.5" xmlns="http://www.w3.org/2000/svg"><path d="M1 1h12v15.5l-6-4.3-6 4.3V1z"/></svg>';
+  }
+
+  // Detect bookmark state: use standalone display mode as a proxy for "added to home screen".
+  // There's no reliable cross-browser API to detect bookmarks; we store a flag in localStorage.
+  let isBookmarked = localStorage.getItem('hy_bookmarked') === '1';
+  render(isBookmarked);
+
+  bookmarkEl.title = isBookmarked ? 'Bookmarked' : 'Bookmark this site';
+
+  bookmarkEl.addEventListener('click', function () {
+    // Try legacy browser bookmark APIs
+    if (window.sidebar && window.sidebar.addPanel) {
+      window.sidebar.addPanel(document.title, location.href, '');
+      isBookmarked = true;
+    } else {
+      // Modern browsers don't allow programmatic bookmarking — show instructions
+      const isMac = /Mac|iPhone|iPad/.test(navigator.userAgent);
+      const shortcut = isMac ? '⌘+D' : 'Ctrl+D';
+      alert('Press ' + shortcut + ' to bookmark this page.');
+    }
+    if (isBookmarked) {
+      localStorage.setItem('hy_bookmarked', '1');
+      render(true);
+      bookmarkEl.title = 'Bookmarked';
+    }
+  });
+
+  document.body.appendChild(bookmarkEl);
+})();
 
 // ── Zoom button overlay ───────────────────────────────────────────────────────
 const ZOOM_BTN_SIZE   = 18;   // font size in px — adjust here
@@ -1736,24 +1962,22 @@ let _lastMouseX = window.innerWidth / 2;
 let _lastMouseY = window.innerHeight / 2;
 
 function getMinScale() {
+  if (IS_MOBILE && _fixedMinScale !== null) return _fixedMinScale;
   const refW = surfW || maxSurfW || 5400;
   const refH = surfH || maxSurfH || 3900;
-  const result = Math.max(scrollWrap.clientWidth / refW, scrollWrap.clientHeight / refH);
-  console.log('[DBG] getMinScale =', result, '| surfW:', surfW, 'surfH:', surfH, 'maxSurfW:', maxSurfW, 'maxSurfH:', maxSurfH, '| vw:', scrollWrap.clientWidth, 'vh:', scrollWrap.clientHeight);
-  return result;
+  return Math.max(scrollWrap.clientWidth / refW, scrollWrap.clientHeight / refH) + 0.01;
 }
 
 function updateSpacer() {
-  spacer.style.width  = Math.max(surfW * _currentScale, scrollWrap.clientWidth)  + 'px';
-  spacer.style.height = Math.max(surfH * _currentScale, scrollWrap.clientHeight) + 'px';
+  spacer.style.width  = Math.round(Math.max(surfW * _currentScale, scrollWrap.clientWidth))  + 'px';
+  spacer.style.height = Math.round(Math.max(surfH * _currentScale, scrollWrap.clientHeight)) + 'px';
 }
 
 function applyScale(newScale, stageX, stageY) {
   // stageX/stageY are unscaled stage coordinates — anchor point stays fixed.
-  // Adjust scroll so the anchor point remains at the same viewport position.
-  console.log('[DBG] applyScale BEFORE: _currentScale =', _currentScale, '→ newScale =', newScale, '| stage w/h:', stage.style.width, stage.style.height);
-  const newScrollLeft = stageX * (newScale - _currentScale) + scrollWrap.scrollLeft;
-  const newScrollTop  = stageY * (newScale - _currentScale) + scrollWrap.scrollTop;
+  // Round scroll values to integers to avoid sub-pixel jiggle between layers.
+  const newScrollLeft = Math.round(stageX * (newScale - _currentScale) + scrollWrap.scrollLeft);
+  const newScrollTop  = Math.round(stageY * (newScale - _currentScale) + scrollWrap.scrollTop);
 
   _currentScale = newScale;
   stage.style.transformOrigin = '0 0';
@@ -1762,7 +1986,6 @@ function applyScale(newScale, stageX, stageY) {
 
   scrollWrap.scrollLeft = newScrollLeft;
   scrollWrap.scrollTop  = newScrollTop;
-  console.log('[DBG] applyScale AFTER: _currentScale =', _currentScale, '| stage w/h:', stage.style.width, stage.style.height, '| spacer w/h:', spacer.style.width, spacer.style.height);
   if (typeof _updateScaleBar === 'function') _updateScaleBar();
 }
 
@@ -1834,16 +2057,15 @@ document.addEventListener('touchmove', function(e) {
 document.addEventListener('touchend', function(e) {
   if (e.touches.length < 2) _pinchDist0 = null;
 }, { passive: true });
-// Clamp scale when window is resized (e.g. user makes browser window bigger).
-let _dbgResizeCount = 0;
-window.addEventListener('resize', function() {
-  _dbgResizeCount++;
-  console.log('[DBG] resize fired (#' + _dbgResizeCount + ') innerW:', window.innerWidth, 'innerH:', window.innerHeight, '_currentScale:', _currentScale);
-  updateSpacer();
-  const min = getMinScale();
-  if (_currentScale < min) {
-    console.log('[DBG] resize: clamping scale from', _currentScale, 'to min', min);
-    applyScale(min, surfW / 2, surfH / 2);
-  }
-});
+// Clamp scale when window is resized — desktop only.
+// On mobile, min scale is fixed after layout and must not be recalculated.
+if (!IS_MOBILE) {
+  window.addEventListener('resize', function() {
+    updateSpacer();
+    const min = getMinScale();
+    if (_currentScale < min && min !== _currentScale) {
+      applyScale(min, surfW / 2, surfH / 2);
+    }
+  });
+}
 // ── END ZOOM ──────────────────────────────────────────────────────────────────
