@@ -156,7 +156,7 @@
       "title": "Chanel Window",
       "year": "2025",
       "images": [
-        { "src": "WORKimages/2025_Chanel_window.mov", "width": 240, "x": 1464, "y": 1097, "mx": 898, "my": 806, "mw": 333 }
+        { "src": "WORKimages/2025_Chanel_window.mov", "width": 240, "x": 1750, "y": 1097, "mx": 898, "my": 806, "mw": 333 }
       ],
       "text": "Chanel Window, 2025"
     },
@@ -198,8 +198,25 @@
     }
   ],
   "texts": [
-    { "id": "t001", "content": "An iPhone 13 phone size flip book. Flippable both ways. Flip content contains: a scroll through 10 self made instagram reels in 5 seconds; a future alphabet definition, and many others. It's a book you can just flip through, but you can also stop and read every page. This is my comment on the speed of consumption of image books these days, how it is being reshaped by our interaction with phones. Side by side I hope to discuss about reproduction, orginality and lineality, that exist in these two mediums. Together I bring them into this fragile object that gets reshaped and reformed by every single flip. Book launch event at Waste Store London, 10th Dec, 2024", "x": 2737, "y": 2162, "mx": 1408, "my": 2793, "style": "small" },
+    { "id": "t001", "lines": [
+        "An iPhone 13 phone size flip book. Flippable both ways.",
+        "Flip content contains: a scroll through 10 self made instagram reels in 5 seconds;",
+        "a future alphabet definition, and many others.",
+        "It's a book you can just flip through, but you can also stop and read every page.",
+        "This is my comment on the speed of consumption of image books these days,",
+        "how it is being reshaped by our interaction with phones.",
+        "Side by side I hope to discuss about reproduction, originality and lineality,",
+        "that exist in these two mediums.",
+        "Together I bring them into this fragile object that gets reshaped and reformed by every single flip.",
+        "Book launch event at Waste Store London, 10th Dec, 2024"
+      ], "maxWidth": 500, "align": "center", "lineHeight": 0.8, "x": 2737, "y": 2162, "mx": 1408, "my": 2793, "style": "small" },
     { "id": "t002", "content": "", "x": 1440, "y": 400,  "mx": 667, "my": 513, "style": "large"  },
-    { "id": "t003", "content": "", "x": 2000, "y": 1520, "mx": 926, "my": 1949, "style": "medium" }
+    { "id": "t003", "content": "", "x": 2000, "y": 1520, "mx": 926, "my": 1949, "style": "medium" },
+    { "id": "t004", "lines": [
+        "\u00a9 2026.",
+        "You are viewing a surface. What lies beneath it is protected. What you leave on top of it is not.",
+        "Looking is encouraged but not guaranteed. By being here you agree that looking is an act and not all acts are reversible. Scrolling constitutes agreement.",
+        " This site changes. Things move, appear, and disappear. Things might not be where it was."
+      ], "maxWidth": 600, "align": "center", "lineHeight": 0.8, "x": 1300, "y": 2270, "style": "small" }
   ]
 }
