@@ -420,7 +420,9 @@ function waitResolveAndCache() {
       setTimeout(_posGW, 600);  // retry after Firebase entries may have shifted layout
 
       // Fix min scale once — never recalculate on mobile.
-      _fixedMinScale = getMinScale();
+      // Multiply by 0.85 so the natural fit point sits at ~85% of the zoom-out
+      // range, leaving 15% headroom below before hitting the hard minimum.
+      _fixedMinScale = getMinScale() * 0.85;
     }
   }
 
@@ -1472,7 +1474,7 @@ Object.assign(scaleBarFill.style, {
 scaleBarWrap.appendChild(scaleBarFill);
 
 function _updateScaleBar() {
-  const min = getMinScale();
+  const min = IS_MOBILE ? getMinScale() / 0.85 : getMinScale();
   const max = 3;
   const pct = Math.max(0, Math.min(1, (_currentScale - min) / (max - min)));
   scaleBarFill.style.height = Math.round(pct * 100) + '%';
