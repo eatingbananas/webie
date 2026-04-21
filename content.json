@@ -156,7 +156,7 @@
       "title": "Chanel Window",
       "year": "2025",
       "images": [
-        { "src": "WORKimages/2025_Chanel_window.mov", "width": 240, "x": 1750, "y": 1097, "mx": 898, "my": 806, "mw": 333 }
+        { "src": "WORKimages/2025_Chanel_window.mp4", "width": 240, "x": 1750, "y": 1097, "mx": 898, "my": 806, "mw": 333 }
       ],
       "text": "Chanel Window, 2025"
     },
@@ -166,7 +166,7 @@
       "title": "Communistagram",
       "year": "2024",
       "images": [
-        { "src": "WORKimages/2024_Communistagram.mov", "width": 480, "x": 360, "y": 2261, "mx": 145, "my": 3130, "mw": 667 }
+        { "src": "WORKimages/2024_Communistagram.mp4", "width": 480, "x": 360, "y": 2261, "mx": 145, "my": 3130, "mw": 667 }
       ],
       "text": "Communistagram, 2024"
     },
@@ -176,7 +176,7 @@
       "title": "Birthlook Reveal",
       "year": "2025",
       "images": [
-        { "src": "WORKimages/2025_BirthLookReveal.mov", "width": 400, "x": 3095, "y": 1277, "mx": 1730, "my": 1053, "mw": 556 },
+        { "src": "WORKimages/2025_BirthLookReveal.mp4", "width": 400, "x": 3095, "y": 1277, "mx": 1730, "my": 1053, "mw": 556 },
         { "src": "WORKimages/2025_Birthlook_1.jpeg",    "width": 160, "x": 3274, "y": 1117, "mx": 1753, "my": 774,  "mw": 222 },
         { "src": "WORKimages/2025_Birthlook_2.jpeg",    "width": 164, "x": 3597, "y": 1420, "mx": 1702, "my": 1556, "mw": 228 },
         { "src": "WORKimages/2025_Birthlook_3.jpeg",    "width": 128, "x": 2958, "y": 1610, "mx": 2055, "my": 1492, "mw": 178 }
