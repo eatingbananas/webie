@@ -586,7 +586,7 @@ let MOB_Y_SCALE = 1;
 // 2.0 = same physical size as desktop images (100% relative to desktop would be ~2.7).
 // Positions are NOT affected — only rendered width changes. The collision resolver
 // will automatically push overlapping images apart after scaling.
-const MOB_IMG_SCALE = 2.3;
+const MOB_IMG_SCALE = 1;
 
 function mobilizeImage(img) {
   if (!IS_MOBILE) return img;
@@ -1668,6 +1668,8 @@ if ('ontouchstart' in window) {
       if (Math.abs(_velX) < MIN_VEL && Math.abs(_velY) < MIN_VEL) { _momentumRaf = null; return; }
       mob_pos.x += _velX;
       mob_pos.y += _velY;
+      mob_pos.x = Math.max(figW / 2, Math.min(window.innerWidth  - figW / 2, mob_pos.x));
+      mob_pos.y = Math.max(FIG_H / 2, Math.min(window.innerHeight - FIG_H / 2, mob_pos.y));
       moveReveal(mob_pos.x, mob_pos.y);
       _momentumRaf = requestAnimationFrame(step);
     }
@@ -1702,6 +1704,8 @@ if ('ontouchstart' in window) {
     _currT = performance.now(); _currX = t.clientX; _currY = t.clientY;
     mob_pos.x = t.clientX + _mobDragOffX;
     mob_pos.y = t.clientY + _mobDragOffY;
+    mob_pos.x = Math.max(figW / 2, Math.min(window.innerWidth  - figW / 2, mob_pos.x));
+    mob_pos.y = Math.max(FIG_H / 2, Math.min(window.innerHeight - FIG_H / 2, mob_pos.y));
     moveReveal(mob_pos.x, mob_pos.y);
   }, { passive: false });
 
