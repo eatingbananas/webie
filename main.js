@@ -1431,11 +1431,11 @@ function _zoomStep() {
     const diff = _targetScale - _currentScale;
     if (Math.abs(diff) < 0.0015) {
       applyScale(_targetScale, _zoomAnchorX, _zoomAnchorY);
-      moveReveal(_lastMouseX, _lastMouseY);
+      if (!IS_MOBILE) moveReveal(_lastMouseX, _lastMouseY);
       return;
     }
     applyScale(_currentScale + diff * 0.1, _zoomAnchorX, _zoomAnchorY);
-    moveReveal(_lastMouseX, _lastMouseY);
+    if (!IS_MOBILE) moveReveal(_lastMouseX, _lastMouseY);
     _zoomRafId = requestAnimationFrame(_zoomStep);
   } catch (err) {
     console.error('[DBG] _zoomStep CRASHED:', err);
@@ -2158,9 +2158,6 @@ document.addEventListener('touchend', function(e) {
   if (e.touches.length < 2) {
     _pinchDist0 = null;
     _pinchRafPending = false;
-    if (IS_MOBILE && _fixedMinScale !== null && _currentScale < _fixedMinScale) {
-      applyScale(_fixedMinScale, surfW / 2, surfH / 2);
-    }
   }
 }, { passive: true });
 // Clamp scale when window is resized — desktop only.
