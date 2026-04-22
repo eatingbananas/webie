@@ -497,6 +497,11 @@ function drawFrost() {
 }
 
 function restoreLoop(now) {
+  // TEST: skip frost redraw on mobile when zoomed out below 0.9 — remove this block to revert
+  if (IS_MOBILE && _currentScale < 0.9) {
+    requestAnimationFrame(restoreLoop);
+    return;
+  }
   while (erosionPoints.length > 0 && now - erosionPoints[0].addedAt >= DECAY_MS) {
     erosionPoints.shift();
   }
