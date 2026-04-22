@@ -117,8 +117,6 @@ Object.assign(frostCanvas.style, {
   pointerEvents: 'none',
 });
 stage.insertBefore(frostCanvas, layer2);
-// TEST: hide frost canvas entirely on mobile — remove this line to revert
-if (IS_MOBILE) frostCanvas.style.display = 'none';
 
 let frostCtx   = null;
 let imageCache = null;
@@ -499,8 +497,8 @@ function drawFrost() {
 }
 
 function restoreLoop(now) {
-  // TEST: skip all frost work on mobile entirely — remove this block to revert
-  if (IS_MOBILE) {
+  // TEST: skip frost redraw on mobile when zoomed out below 0.9 — remove this block to revert
+  if (IS_MOBILE && _currentScale < 0.9) {
     requestAnimationFrame(restoreLoop);
     return;
   }
@@ -1176,7 +1174,7 @@ fetch('content.json')
           layer1.appendChild(_pendingL1);
           revealInner.appendChild(_pendingRI);
           waitResolveAndCache();
-          if (!IS_MOBILE) drawFrost(); // TEST: skip initial drawFrost on mobile — remove condition to revert
+          drawFrost();
         });
       });
     // ── END DUMPimages loader ─────────────────────────────────────────────────
