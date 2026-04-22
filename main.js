@@ -1371,6 +1371,10 @@ document.body.appendChild(contactDiv);
   bookmarkEl.title = isBookmarked ? 'Bookmarked' : 'Bookmark this site';
 
   bookmarkEl.addEventListener('click', function () {
+    if (IS_MOBILE && navigator.share) {
+      navigator.share({ title: document.title, url: window.location.href }).catch(() => {});
+      return;
+    }
     // Try legacy browser bookmark APIs
     if (window.sidebar && window.sidebar.addPanel) {
       window.sidebar.addPanel(document.title, location.href, '');
@@ -2063,30 +2067,33 @@ function applyScale(newScale, stageX, stageY) {
 document.addEventListener('wheel', function(e) {
   if (e.ctrlKey) e.preventDefault();
 }, { passive: false });
+// Gesture events (Safari desktop) — disabled on mobile to avoid double-handling with touch pinch.
 let _gestureScale0 = 1;
-document.addEventListener('gesturestart', function(e) {
-  e.preventDefault();
-  _gestureScale0 = _currentScale;
-}, { passive: false });
+if (!IS_MOBILE) {
+  document.addEventListener('gesturestart', function(e) {
+    e.preventDefault();
+    _gestureScale0 = _currentScale;
+  }, { passive: false });
 
-document.addEventListener('gesturechange', function(e) {
-  e.preventDefault();
-  try {
-    const min      = getMinScale();
-    const newScale = Math.min(3, Math.max(min, _gestureScale0 * e.scale));
-    if (!isFinite(newScale) || newScale < min) return;
-    const originX  = (scrollWrap.scrollLeft + e.clientX) / _currentScale;
-    const originY  = (scrollWrap.scrollTop  + e.clientY) / _currentScale;
-    applyScale(newScale, originX, originY);
-    moveReveal(_lastMouseX, _lastMouseY);
-  } catch (err) {
-    // swallow
-  }
-}, { passive: false });
+  document.addEventListener('gesturechange', function(e) {
+    e.preventDefault();
+    try {
+      const min      = getMinScale();
+      const newScale = Math.min(3, Math.max(min, _gestureScale0 * e.scale));
+      if (!isFinite(newScale) || newScale < min) return;
+      const originX  = (scrollWrap.scrollLeft + e.clientX) / _currentScale;
+      const originY  = (scrollWrap.scrollTop  + e.clientY) / _currentScale;
+      applyScale(newScale, originX, originY);
+      moveReveal(_lastMouseX, _lastMouseY);
+    } catch (err) {
+      // swallow
+    }
+  }, { passive: false });
 
-document.addEventListener('gestureend', function(e) {
-  e.preventDefault();
-}, { passive: false });
+  document.addEventListener('gestureend', function(e) {
+    e.preventDefault();
+  }, { passive: false });
+}
 
 // Ctrl+scroll zoom.
 document.addEventListener('wheel', function(e) {
@@ -2108,11 +2115,13 @@ let _pinchDist0 = null;
 let _pinchScale0 = 1;
 let _pinchMidX = 0;
 let _pinchMidY = 0;
+let _pinchRafPending = false;
 
 document.addEventListener('touchstart', function(e) {
   if (e.touches.length === 2) {
     const t0 = e.touches[0], t1 = e.touches[1];
     _pinchDist0  = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
+    if (_pinchDist0 < 10) { _pinchDist0 = null; return; }
     _pinchScale0 = _currentScale;
     const midX = (t0.clientX + t1.clientX) / 2;
     const midY = (t0.clientY + t1.clientY) / 2;
@@ -2124,22 +2133,35 @@ document.addEventListener('touchstart', function(e) {
 document.addEventListener('touchmove', function(e) {
   if (e.touches.length !== 2 || _pinchDist0 === null) return;
   e.preventDefault();
-  try {
-    const t0 = e.touches[0], t1 = e.touches[1];
-    const dist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
-    if (!dist || dist <= 0) return;
-    const min      = getMinScale();
-    const raw      = _pinchScale0 * (dist / _pinchDist0);
-    const newScale = Math.min(3, Math.max(min, raw));
-    if (!isFinite(newScale) || newScale < min) return;
-    applyScale(newScale, _pinchMidX, _pinchMidY);
-  } catch (err) {
-    // swallow — never let a zoom calc crash the page
-  }
+  if (_pinchRafPending) return;
+  const t0 = e.touches[0], t1 = e.touches[1];
+  const dist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
+  if (!dist || dist < 10) return;
+  const snapMidX = _pinchMidX, snapMidY = _pinchMidY;
+  const snapDist = dist;
+  _pinchRafPending = true;
+  requestAnimationFrame(() => {
+    _pinchRafPending = false;
+    try {
+      const min      = getMinScale();
+      const raw      = _pinchScale0 * (snapDist / _pinchDist0);
+      const newScale = Math.min(3, Math.max(min, raw));
+      if (!isFinite(newScale) || newScale <= 0 || newScale < min) return;
+      applyScale(newScale, snapMidX, snapMidY);
+    } catch (err) {
+      // swallow — never let a zoom calc crash the page
+    }
+  });
 }, { passive: false });
 
 document.addEventListener('touchend', function(e) {
-  if (e.touches.length < 2) _pinchDist0 = null;
+  if (e.touches.length < 2) {
+    _pinchDist0 = null;
+    _pinchRafPending = false;
+    if (IS_MOBILE && _fixedMinScale !== null && _currentScale < _fixedMinScale) {
+      applyScale(_fixedMinScale, surfW / 2, surfH / 2);
+    }
+  }
 }, { passive: true });
 // Clamp scale when window is resized — desktop only.
 // On mobile, min scale is fixed after layout and must not be recalculated.
