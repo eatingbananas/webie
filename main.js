@@ -614,7 +614,7 @@ function placeItem(item) {
       if (isVideo) {
         el = document.createElement('video');
         el.dataset.src = src;  // real src stored here; loaded lazily by observer
-        el.autoplay    = true;
+        el.autoplay    = IS_MOBILE ? item.id === '015' : true;
         el.loop        = true;
         el.muted       = true;
         el.playsInline = true;
@@ -653,8 +653,10 @@ function placeItem(item) {
           l1El.preload = 'auto';
           riEl.preload = 'auto';
         }
-        l1El.play().catch(() => {});
-        riEl.play().catch(() => {});
+        if (!IS_MOBILE || item.id === '015') {
+          l1El.play().catch(() => {});
+          riEl.play().catch(() => {});
+        }
       }, { root: scrollWrap, rootMargin: '200px' });
       videoObserver.observe(l1El);
     }
@@ -1165,6 +1167,9 @@ fetch('content.json')
           .then(entries => placeUpdateLog(entries));
 
         Promise.all([...txtPromises, ulPromise]).then(() => {
+          // Pre-position scroll before elements appear so there's no visible jump.
+          scrollWrap.scrollLeft = surfW / 2 - scrollWrap.clientWidth  / 2 + LANDING_OFFSET_X;
+          scrollWrap.scrollTop  = surfH / 2 - scrollWrap.clientHeight / 2 + LANDING_OFFSET_Y;
           // Flush all layer1/revealInner elements at once — final positions already set.
           layer1.appendChild(_pendingL1);
           revealInner.appendChild(_pendingRI);
@@ -1267,7 +1272,7 @@ function registerVideoPlayListeners() {
   document.addEventListener('touchstart',tryPlayAllVideos, { once: true, passive: true });
 }
 
-registerVideoPlayListeners();
+if (!IS_MOBILE) registerVideoPlayListeners();
 
 // ── Contact overlay ───────────────────────────────────────────────────────────
 const contactDiv = document.createElement('div');
