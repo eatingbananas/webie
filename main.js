@@ -113,10 +113,12 @@ Object.assign(frostCanvas.style, {
   top:           '0',
   left:          '0',
   zIndex:        '1',
-  filter:        IS_MOBILE ? 'none' : 'blur(20px)',  // TEST: no blur on mobile — remove this ternary to revert
+  filter:        'blur(20px)',
   pointerEvents: 'none',
 });
 stage.insertBefore(frostCanvas, layer2);
+// TEST: hide frost canvas entirely on mobile — remove this line to revert
+if (IS_MOBILE) frostCanvas.style.display = 'none';
 
 let frostCtx   = null;
 let imageCache = null;
@@ -497,8 +499,8 @@ function drawFrost() {
 }
 
 function restoreLoop(now) {
-  // TEST: skip frost redraw on mobile when zoomed out below 0.9 — remove this block to revert
-  if (IS_MOBILE && _currentScale < 0.9) {
+  // TEST: skip all frost work on mobile entirely — remove this block to revert
+  if (IS_MOBILE) {
     requestAnimationFrame(restoreLoop);
     return;
   }
@@ -1174,7 +1176,7 @@ fetch('content.json')
           layer1.appendChild(_pendingL1);
           revealInner.appendChild(_pendingRI);
           waitResolveAndCache();
-          drawFrost();
+          if (!IS_MOBILE) drawFrost(); // TEST: skip initial drawFrost on mobile — remove condition to revert
         });
       });
     // ── END DUMPimages loader ─────────────────────────────────────────────────
