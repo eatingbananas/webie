@@ -113,7 +113,7 @@ Object.assign(frostCanvas.style, {
   top:           '0',
   left:          '0',
   zIndex:        '1',
-  filter:        'blur(20px)',
+  filter:        IS_MOBILE ? 'none' : 'blur(20px)',  // TEST: no blur on mobile — remove this ternary to revert
   pointerEvents: 'none',
 });
 stage.insertBefore(frostCanvas, layer2);
@@ -1605,7 +1605,7 @@ function mob_onScroll() {
 
 function mob_showHint() {
   const hint = document.createElement('div');
-  hint.innerHTML = 'drag figure to look<br>scroll to navigate<br><span id="mob-hint-pc">or experience differently on PC...</span>';
+  hint.innerHTML = 'drag figure to look<br>scroll to navigate<br><span id="mob-hint-pc"></span>';
   Object.assign(hint.style, {
     position:      'fixed',
     bottom:        '32px',
