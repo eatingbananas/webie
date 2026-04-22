@@ -586,7 +586,7 @@ let MOB_Y_SCALE = 1;
 // 2.0 = same physical size as desktop images (100% relative to desktop would be ~2.7).
 // Positions are NOT affected — only rendered width changes. The collision resolver
 // will automatically push overlapping images apart after scaling.
-const MOB_IMG_SCALE = 3;
+const MOB_IMG_SCALE = 2.3;
 
 function mobilizeImage(img) {
   if (!IS_MOBILE) return img;
@@ -1489,7 +1489,7 @@ Object.assign(scaleBarFill.style, {
 scaleBarWrap.appendChild(scaleBarFill);
 
 function _updateScaleBar() {
-  const min = getMinScale();
+  const min = IS_MOBILE ? 1.0 : getMinScale();
   const max = 3;
   const pct = Math.max(0, Math.min(1, (_currentScale - min) / (max - min)));
   scaleBarFill.style.height = Math.round(pct * 100) + '%';
@@ -1500,6 +1500,7 @@ zoomOutBtn.textContent = '−';
 Object.assign(zoomOutBtn.style, { cursor: 'pointer', lineHeight: '1' });
 zoomOutBtn.addEventListener('click', () => {
   console.log('[DBG] zoom-out button clicked | _currentScale before:', _currentScale);
+  if (IS_MOBILE && _currentScale <= 1.0) return;
   try {
     _zoomFromCentre(_currentScale - ZOOM_STEP);
   } catch (err) {
