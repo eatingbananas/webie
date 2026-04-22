@@ -571,8 +571,8 @@ function raggedWrap(content, textId, maxLines) {
 const IS_MOBILE = window.innerWidth < 768 ||
   new URLSearchParams(window.location.search).has('mob');
 // Mobile surface dimensions.
-const MOB_SURF_W = 2000;
-const MOB_SURF_H = 4000;
+const MOB_SURF_W = 2600;
+const MOB_SURF_H = 5200;
 
 // Scale factors — set in the fetch handler once data.surface_width/height are known.
 // mobilizeImage() uses these to remap desktop coordinates to mobile space.
@@ -1514,6 +1514,42 @@ zoomWrap.appendChild(zoomOutBtn);
 document.body.appendChild(zoomWrap);
 
 setTimeout(_updateScaleBar, 800);
+
+// ── MOBILE ZOOM SCALE INDICATOR ───────────────────────────────────────────────
+// Small "×1.5" label to the right of zoom buttons, visible on mobile only.
+// Shown immediately on button click, fades out 1.5 s after last click.
+if (IS_MOBILE) {
+  const _zoomLabel = document.createElement('div');
+  Object.assign(_zoomLabel.style, {
+    position:   'fixed',
+    left:       (ZOOM_BTN_LEFT + 20) + 'px',
+    top:        '50%',
+    transform:  'translateY(-50%)',
+    zIndex:     '10',
+    fontFamily: '"Lucida Grande", Verdana, Geneva, sans-serif',
+    fontSize:   '11px',
+    color:      '#aaa',
+    opacity:    '0',
+    transition: 'opacity 0.3s ease',
+    pointerEvents: 'none',
+    whiteSpace: 'nowrap',
+  });
+  document.body.appendChild(_zoomLabel);
+
+  let _zoomLabelTimer = null;
+
+  function _showZoomLabel() {
+    const mult = Math.round(_currentScale / 1.0 * 4) / 4;
+    _zoomLabel.textContent = '×' + (Number.isInteger(mult) ? mult : mult.toFixed(2));
+    _zoomLabel.style.opacity = '1';
+    clearTimeout(_zoomLabelTimer);
+    _zoomLabelTimer = setTimeout(() => { _zoomLabel.style.opacity = '0'; }, 1500);
+  }
+
+  zoomInBtn.addEventListener('click',  _showZoomLabel);
+  zoomOutBtn.addEventListener('click', _showZoomLabel);
+}
+// ── END MOBILE ZOOM SCALE INDICATOR ──────────────────────────────────────────
 
 // ── MOBILE SCROLL INDICATORS ──────────────────────────────────────────────────
 // Horizontal bar: top-centre — shows left/right progress.
