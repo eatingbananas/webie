@@ -1,5 +1,7 @@
 'use strict';
 
+document.documentElement.style.visibility = 'hidden';
+
 // ── Landing position offset from centre (px) ──────────────────────────────────
 const LANDING_OFFSET_X = -300;   // positive = scroll right
 const LANDING_OFFSET_Y = -180;   // positive = scroll down
@@ -422,6 +424,7 @@ function waitResolveAndCache() {
       // Fix min scale once — never recalculate on mobile.
       _fixedMinScale = getMinScale();
     }
+    document.documentElement.style.visibility = 'visible';
   }
 
   if (pending === 0) { finish(); return; }
