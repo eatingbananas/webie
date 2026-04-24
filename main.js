@@ -460,7 +460,6 @@ function rebuildErosion(now) {
 
 function drawFrost() {
   if (!frostCtx) return;
-  if (!imageCache) return;
   const w = frostCanvas.width, h = frostCanvas.height;
 
   frostCtx.clearRect(0, 0, w, h);
@@ -469,6 +468,9 @@ function drawFrost() {
   } else {
     frostCtx.fillStyle = '#f0eeeb';
     frostCtx.fillRect(0, 0, w, h);
+    frostCtx.fillStyle = 'rgba(255,255,255,0.72)';
+    frostCtx.fillRect(0, 0, w, h);
+    return;
   }
 
   // Draw current video frames on top of imageCache each frame.
