@@ -578,7 +578,7 @@ let MOB_Y_SCALE = 1;
 // 2.0 = same physical size as desktop images (100% relative to desktop would be ~2.7).
 // Positions are NOT affected — only rendered width changes. The collision resolver
 // will automatically push overlapping images apart after scaling.
-const MOB_IMG_SCALE = 1;
+const MOB_IMG_SCALE = 0.5;
 
 function mobilizeImage(img) {
   if (!IS_MOBILE) return img;
