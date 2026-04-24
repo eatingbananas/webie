@@ -220,3 +220,4 @@
       ], "maxWidth": 600, "align": "center", "lineHeight": 0.8, "x": 1300, "y": 2270, "style": "small" }
   ]
 }
+
