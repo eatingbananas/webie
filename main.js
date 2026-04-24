@@ -1458,7 +1458,13 @@ function _zoomFromCentre(newScale) {
 
 const zoomInBtn = document.createElement('div');
 zoomInBtn.textContent = '+';
-Object.assign(zoomInBtn.style, { cursor: 'pointer', lineHeight: '1' });
+Object.assign(zoomInBtn.style, {
+  cursor:     'pointer',
+  lineHeight: '1',
+  fontSize:   IS_MOBILE ? Math.round(ZOOM_BTN_SIZE * 1.5) + 'px' : '',
+  padding:    IS_MOBILE ? '8px 10px' : '',
+  margin:     IS_MOBILE ? '-8px -10px' : '',
+});
 zoomInBtn.addEventListener('click', () => _zoomFromCentre(_currentScale + (IS_MOBILE ? 0.25 : ZOOM_STEP)));
 
 // Scale bar
@@ -1489,7 +1495,13 @@ function _updateScaleBar() {
 
 const zoomOutBtn = document.createElement('div');
 zoomOutBtn.textContent = '−';
-Object.assign(zoomOutBtn.style, { cursor: 'pointer', lineHeight: '1' });
+Object.assign(zoomOutBtn.style, {
+  cursor:     'pointer',
+  lineHeight: '1',
+  fontSize:   IS_MOBILE ? Math.round(ZOOM_BTN_SIZE * 1.5) + 'px' : '',
+  padding:    IS_MOBILE ? '8px 10px' : '',
+  margin:     IS_MOBILE ? '-8px -10px' : '',
+});
 zoomOutBtn.addEventListener('click', () => {
   console.log('[DBG] zoom-out button clicked | _currentScale before:', _currentScale);
   if (IS_MOBILE && _currentScale <= 1.0) return;
