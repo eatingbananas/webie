@@ -588,7 +588,7 @@ function mobilizeImage(img) {
   }
   return {
     src:   img.src,
-    width: Math.max(60, Math.round(img.width * MOB_X_SCALE * MOB_IMG_SCALE)),
+    width: Math.max(20, Math.round(img.width * MOB_X_SCALE * MOB_IMG_SCALE)),
     x:     Math.round(img.x * MOB_X_SCALE),
     y:     Math.round(img.y * MOB_Y_SCALE),
   };
