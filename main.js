@@ -460,6 +460,7 @@ function rebuildErosion(now) {
 
 function drawFrost() {
   if (!frostCtx) return;
+  if (!imageCache) return;
   const w = frostCanvas.width, h = frostCanvas.height;
 
   frostCtx.clearRect(0, 0, w, h);
