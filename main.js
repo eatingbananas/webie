@@ -422,6 +422,7 @@ function waitResolveAndCache() {
 
     }
     document.documentElement.style.visibility = 'visible';
+    if (IS_MOBILE && figW > 0) mob_initPosition();
   }
 
   if (pending === 0) { finish(); return; }
@@ -1640,8 +1641,36 @@ if (IS_MOBILE) {
 const mob_pos = { x: 0, y: 0 };  // current viewport position of figure centre
 
 function mob_initPosition() {
-  mob_pos.x = window.innerWidth  / 2;
-  mob_pos.y = window.innerHeight / 2;
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+
+  // If layout is ready, snap figure to the nearest placed image.
+  if (allPlaced.length > 0 && figW > 0) {
+    const sl = scrollWrap.scrollLeft;
+    const st = scrollWrap.scrollTop;
+    const sx = (sl + vw / 2) / _currentScale;
+    const sy = (st + vh / 2) / _currentScale;
+
+    let best = null, bestDist = Infinity;
+    for (const p of allPlaced) {
+      const ix = parseFloat(p.l1El.style.left) + p.width / 2;
+      const iy = parseFloat(p.l1El.style.top)  + (p.l1El.offsetHeight || Math.round(p.width * 1.3)) / 2;
+      const d  = Math.hypot(ix - sx, iy - sy);
+      if (d < bestDist) { bestDist = d; best = p; }
+    }
+
+    if (best) {
+      const ix = parseFloat(best.l1El.style.left) + best.width / 2;
+      const iy = parseFloat(best.l1El.style.top)  + (best.l1El.offsetHeight || Math.round(best.width * 1.3)) / 2;
+      mob_pos.x = Math.max(figW / 2, Math.min(vw - figW / 2, ix * _currentScale - sl));
+      mob_pos.y = Math.max(FIG_H / 2, Math.min(vh - FIG_H / 2, iy * _currentScale - st));
+      moveReveal(mob_pos.x, mob_pos.y);
+      return;
+    }
+  }
+
+  mob_pos.x = vw / 2;
+  mob_pos.y = vh / 2;
   moveReveal(mob_pos.x, mob_pos.y);
 }
 
