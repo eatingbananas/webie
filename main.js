@@ -421,7 +421,6 @@ function waitResolveAndCache() {
       setTimeout(_posGW, 600);  // retry after Firebase entries may have shifted layout
 
     }
-    document.documentElement.style.visibility = 'visible';
     if (IS_MOBILE && figW > 0) mob_initPosition();
   }
 
@@ -1108,8 +1107,29 @@ fetch('content.json')
           const rand  = makeRand(seed);
           const w     = Math.round(rand(120, 240));
           const pad   = 60;
-          const x     = Math.round(col * cellW + rand(pad, Math.max(pad + 1, cellW - w - pad)));
-          const y     = Math.round(row * cellH + rand(pad, Math.max(pad + 1, cellH - 240 - pad)));
+          let x, y;
+          if (IS_MOBILE) {
+            const estH  = Math.round(w * 1.3);
+            const TRIES = 12;
+            let bestX = Math.round(col * cellW + pad), bestY = Math.round(row * cellH + pad), bestDist = -1;
+            for (let t = 0; t < TRIES; t++) {
+              const cx = Math.round(col * cellW + rand(pad, Math.max(pad + 1, cellW - w - pad)));
+              const cy = Math.round(row * cellH + rand(pad, Math.max(pad + 1, cellH - estH - pad)));
+              let minDist = Infinity;
+              for (const p of allPlaced) {
+                const px = parseFloat(p.l1El.style.left), py = parseFloat(p.l1El.style.top);
+                const pw = p.width, ph = Math.round(pw * 1.3);
+                const dx = Math.max(0, Math.max(px, cx) - Math.min(px + pw, cx + w));
+                const dy = Math.max(0, Math.max(py, cy) - Math.min(py + ph, cy + estH));
+                minDist = Math.min(minDist, Math.hypot(dx, dy));
+              }
+              if (minDist > bestDist) { bestDist = minDist; bestX = cx; bestY = cy; }
+            }
+            x = bestX; y = bestY;
+          } else {
+            x = Math.round(col * cellW + rand(pad, Math.max(pad + 1, cellW - w - pad)));
+            y = Math.round(row * cellH + rand(pad, Math.max(pad + 1, cellH - 240 - pad)));
+          }
           const src   = 'DUMPimages/' + filename;
 
           function makeDumpEl() {
@@ -1172,8 +1192,9 @@ fetch('content.json')
           // Flush all layer1/revealInner elements at once — final positions already set.
           layer1.appendChild(_pendingL1);
           revealInner.appendChild(_pendingRI);
-          waitResolveAndCache();
           drawFrost();
+          document.documentElement.style.visibility = 'visible';
+          waitResolveAndCache();
         });
       });
     // ── END DUMPimages loader ─────────────────────────────────────────────────
