@@ -67,6 +67,7 @@ Object.assign(_btnOverlay.style, {
   pointerEvents: 'none',
   zIndex:        '4',
   overflow:      'hidden',
+  visibility:    'hidden',
 });
 document.body.appendChild(_btnOverlay);
 
@@ -422,6 +423,10 @@ function waitResolveAndCache() {
 
     }
     if (IS_MOBILE && figW > 0) mob_initPosition();
+    stage.style.visibility = '';
+    _btnOverlay.style.visibility = '';
+    _loadingEl.remove();
+    _spinStyle.remove();
   }
 
   if (pending === 0) { finish(); return; }
@@ -1193,7 +1198,6 @@ fetch('content.json')
           layer1.appendChild(_pendingL1);
           revealInner.appendChild(_pendingRI);
           drawFrost();
-          document.documentElement.style.visibility = 'visible';
           waitResolveAndCache();
         });
       });
@@ -1541,6 +1545,31 @@ zoomWrap.appendChild(zoomInBtn);
 zoomWrap.appendChild(scaleBarWrap);
 zoomWrap.appendChild(zoomOutBtn);
 document.body.appendChild(zoomWrap);
+
+// Show UI chrome immediately; hide stage until images are positioned.
+document.documentElement.style.visibility = 'visible';
+stage.style.visibility = 'hidden';
+
+const _loadingEl = document.createElement('div');
+Object.assign(_loadingEl.style, {
+  position: 'fixed',
+  top: '50%',
+  left: '50%',
+  transform: 'translate(-50%, -50%)',
+  width: '20px',
+  height: '20px',
+  border: '2px solid rgba(0,0,0,0.08)',
+  borderTopColor: '#aaa',
+  borderRadius: '50%',
+  zIndex: '5',
+  pointerEvents: 'none',
+  animation: '_spin 0.8s linear infinite',
+});
+
+const _spinStyle = document.createElement('style');
+_spinStyle.textContent = '@keyframes _spin { to { transform: translate(-50%, -50%) rotate(360deg); } }';
+document.head.appendChild(_spinStyle);
+document.body.appendChild(_loadingEl);
 
 setTimeout(_updateScaleBar, 800);
 
