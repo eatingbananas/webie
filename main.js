@@ -1477,7 +1477,7 @@ function _zoomFromCentre(newScale) {
   const cy = scrollWrap.clientHeight / 2;
   _zoomAnchorX = (scrollWrap.scrollLeft + cx) / _currentScale;
   _zoomAnchorY = (scrollWrap.scrollTop  + cy) / _currentScale;
-  _targetScale = Math.max(getMinScale(), Math.min(IS_MOBILE ? 2 : 3, newScale));
+  _targetScale = Math.max(IS_MOBILE ? 0.75 : getMinScale(), Math.min(IS_MOBILE ? 2 : 3, newScale));
   if (_zoomRafId === null) _zoomRafId = requestAnimationFrame(_zoomStep);
 }
 
@@ -1490,7 +1490,7 @@ Object.assign(zoomInBtn.style, {
   padding:    IS_MOBILE ? '8px 10px' : '',
   margin:     IS_MOBILE ? '-8px -10px' : '',
 });
-zoomInBtn.addEventListener('click', () => _zoomFromCentre(_currentScale + (IS_MOBILE ? 0.25 : ZOOM_STEP)));
+zoomInBtn.addEventListener('click', () => _zoomFromCentre(_targetScale + (IS_MOBILE ? 0.25 : ZOOM_STEP)));
 
 // Scale bar
 const scaleBarWrap = document.createElement('div');
@@ -1512,7 +1512,7 @@ Object.assign(scaleBarFill.style, {
 scaleBarWrap.appendChild(scaleBarFill);
 
 function _updateScaleBar() {
-  const min = IS_MOBILE ? 1.0 : getMinScale();
+  const min = IS_MOBILE ? 0.75 : getMinScale();
   const max = IS_MOBILE ? 2 : 3;
   const pct = Math.max(0, Math.min(1, (_currentScale - min) / (max - min)));
   scaleBarFill.style.height = Math.round(pct * 100) + '%';
@@ -1529,9 +1529,9 @@ Object.assign(zoomOutBtn.style, {
 });
 zoomOutBtn.addEventListener('click', () => {
   console.log('[DBG] zoom-out button clicked | _currentScale before:', _currentScale);
-  if (IS_MOBILE && _currentScale <= 1.0) return;
+  if (IS_MOBILE && _targetScale <= 0.75) return;
   try {
-    _zoomFromCentre(_currentScale - (IS_MOBILE ? 0.25 : ZOOM_STEP));
+    _zoomFromCentre(_targetScale - (IS_MOBILE ? 0.25 : ZOOM_STEP));
   } catch (err) {
     console.error('[DBG] zoom-out CRASHED:', err);
   }
