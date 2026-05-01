@@ -1597,7 +1597,7 @@ if (IS_MOBILE) {
   let _zoomLabelTimer = null;
 
   function _showZoomLabel() {
-    const mult = Math.round(_currentScale / 1.0 * 4) / 4;
+    const mult = Math.round(_targetScale / 1.0 * 4) / 4;
     _zoomLabel.textContent = '×' + (Number.isInteger(mult) ? mult : mult.toFixed(2));
     _zoomLabel.style.opacity = '1';
     clearTimeout(_zoomLabelTimer);
