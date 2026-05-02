@@ -31,8 +31,9 @@
     const db  = getDatabase(app);
 
     // ── GuestWeb ──────────────────────────────────────────────────────────────
-    const GW_X = 3600;
-    const GW_Y = 1000;
+    const IS_MOBILE = window.innerWidth < 768 || new URLSearchParams(window.location.search).has('mob');
+    const GW_X = IS_MOBILE ? 450  : 3600;
+    const GW_Y = IS_MOBILE ? 2600 : 1000;
 
     // Expose coords so the main.js GuestWeb link can scroll to this position.
     document.body.dataset.gwX = GW_X;
