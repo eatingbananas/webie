@@ -1111,7 +1111,8 @@ fetch('content.json')
           const row   = Math.floor(i / cols);
           const seed  = strToSeed('dump_' + filename);
           const rand  = makeRand(seed);
-          const w     = Math.round(rand(120, 240));
+          const wBase = Math.round(rand(120, 240));
+          const w     = IS_MOBILE ? Math.round(wBase * MOB_IMG_SCALE) : wBase;
           const pad   = 60;
           let x, y;
           if (IS_MOBILE && mobPos[filename]) {
