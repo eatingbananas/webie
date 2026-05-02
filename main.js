@@ -415,8 +415,8 @@ function waitResolveAndCache() {
       const _posGW = () => {
         const gwEl = document.getElementById('guestweb-area');
         if (!gwEl) return;
-        gwEl.style.left = Math.round(4000 * MOB_X_SCALE) + 'px';
-        gwEl.style.top  = Math.round(2000 * MOB_Y_SCALE) + 'px';
+        gwEl.style.left = '450px';
+        gwEl.style.top  = '4000px';
       };
       setTimeout(_posGW, 0);
       setTimeout(_posGW, 600);  // retry after Firebase entries may have shifted layout
