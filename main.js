@@ -402,6 +402,7 @@ function waitResolveAndCache() {
     // scroll range) are clamped so the user cannot scroll to blank space.
     if (IS_MOBILE) {
       const narrowW = Math.round(bx1 + 80);
+      surfW = narrowW;  // keep updateSpacer() in sync so scroll never exceeds stage right edge
       stage.style.width     = narrowW + 'px';
       stage.style.height    = surfH   + 'px';
       stage.style.overflowX = 'hidden';
@@ -416,7 +417,7 @@ function waitResolveAndCache() {
         const gwEl = document.getElementById('guestweb-area');
         if (!gwEl) return;
         gwEl.style.left = '450px';
-        gwEl.style.top  = '4000px';
+        gwEl.style.top  = '2600px';
       };
       setTimeout(_posGW, 0);
       setTimeout(_posGW, 600);  // retry after Firebase entries may have shifted layout
