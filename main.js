@@ -402,14 +402,16 @@ function waitResolveAndCache() {
     // scroll range) are clamped so the user cannot scroll to blank space.
     if (IS_MOBILE) {
       const narrowW = Math.round(bx1 + 80);
+      const narrowH = Math.round(by1 + 200);
       surfW = narrowW;  // keep updateSpacer() in sync so scroll never exceeds stage right edge
+      surfH = narrowH;  // clamp to content bottom so empty space below is not scrollable
       stage.style.width     = narrowW + 'px';
-      stage.style.height    = surfH   + 'px';
+      stage.style.height    = narrowH + 'px';
       stage.style.overflowX = 'hidden';
       stage.style.overflowY = 'hidden';
       // Override the spacer so scrollWrap's scrollable area matches exactly.
       spacer.style.width  = narrowW + 'px';
-      spacer.style.height = surfH   + 'px';
+      spacer.style.height = narrowH + 'px';
 
       // Reposition GuestWeb (created by the module in index.html) to fit
       // within the narrowed canvas.
