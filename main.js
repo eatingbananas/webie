@@ -572,7 +572,7 @@ const IS_MOBILE = window.innerWidth < 768 ||
   new URLSearchParams(window.location.search).has('mob');
 // Mobile surface dimensions.
 const MOB_SURF_W = 2200;
-const MOB_SURF_H = 4000;
+const MOB_SURF_H = 3500;
 
 // Scale factors — set in the fetch handler once data.surface_width/height are known.
 // mobilizeImage() uses these to remap desktop coordinates to mobile space.
@@ -1086,10 +1086,10 @@ fetch('content.json')
     // Fetch DUMPimages/manifest.json, scatter images and .txt files across the
     // stage alongside portfolio items. Positions are seeded by filename so they
     // stay stable across reloads. Call waitResolveAndCache after all are placed.
-    fetch('DUMPimages/manifest.json')
-      .then(r => r.ok ? r.json() : [])
-      .catch(() => [])
-      .then(files => {
+    Promise.all([
+      fetch('DUMPimages/manifest.json').then(r => r.ok ? r.json() : []).catch(() => []),
+      fetch('DUMPimages/mobile_positions.json').then(r => r.ok ? r.json() : {}).catch(() => ({})),
+    ]).then(([files, mobPos]) => {
         const imgExts = /\.(jpe?g|png|gif|webp|svg)$/i;
         const txtExts = /\.txt$/i;
         const imgFiles = files.filter(f => imgExts.test(f));
@@ -1113,7 +1113,10 @@ fetch('content.json')
           const w     = Math.round(rand(120, 240));
           const pad   = 60;
           let x, y;
-          if (IS_MOBILE) {
+          if (IS_MOBILE && mobPos[filename]) {
+            x = mobPos[filename].mx;
+            y = mobPos[filename].my;
+          } else if (IS_MOBILE) {
             const estH  = Math.round(w * 1.3);
             const TRIES = 12;
             let bestX = Math.round(col * cellW + pad), bestY = Math.round(row * cellH + pad), bestDist = -1;
