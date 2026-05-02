@@ -1699,24 +1699,15 @@ function mob_initPosition() {
   const vw = window.innerWidth;
   const vh = window.innerHeight;
 
-  // If layout is ready, snap figure to the nearest placed image.
+  // Snap figure to Car Nour image on load.
   if (allPlaced.length > 0 && figW > 0) {
     const sl = scrollWrap.scrollLeft;
     const st = scrollWrap.scrollTop;
-    const sx = (sl + vw / 2) / _currentScale;
-    const sy = (st + vh / 2) / _currentScale;
 
-    let best = null, bestDist = Infinity;
-    for (const p of allPlaced) {
-      const ix = parseFloat(p.l1El.style.left) + p.width / 2;
-      const iy = parseFloat(p.l1El.style.top)  + (p.l1El.offsetHeight || Math.round(p.width * 1.3)) / 2;
-      const d  = Math.hypot(ix - sx, iy - sy);
-      if (d < bestDist) { bestDist = d; best = p; }
-    }
-
-    if (best) {
-      const ix = parseFloat(best.l1El.style.left) + best.width / 2;
-      const iy = parseFloat(best.l1El.style.top)  + (best.l1El.offsetHeight || Math.round(best.width * 1.3)) / 2;
+    const target = allPlaced.find(p => p.itemId === '013') || null;
+    if (target) {
+      const ix = parseFloat(target.l1El.style.left) + target.width / 2;
+      const iy = parseFloat(target.l1El.style.top)  + (target.l1El.offsetHeight || Math.round(target.width * 1.3)) / 2;
       mob_pos.x = Math.max(figW / 2, Math.min(vw - figW / 2, ix * _currentScale - sl));
       mob_pos.y = Math.max(FIG_H / 2, Math.min(vh - FIG_H / 2, iy * _currentScale - st));
       moveReveal(mob_pos.x, mob_pos.y);
@@ -2228,6 +2219,7 @@ if (!IS_MOBILE) {
       const originX  = (scrollWrap.scrollLeft + e.clientX) / _currentScale;
       const originY  = (scrollWrap.scrollTop  + e.clientY) / _currentScale;
       applyScale(newScale, originX, originY);
+      _targetScale = newScale;
       moveReveal(_lastMouseX, _lastMouseY);
     } catch (err) {
       // swallow
@@ -2251,6 +2243,7 @@ document.addEventListener('wheel', function(e) {
   const originY  = (scrollWrap.scrollTop  + e.clientY) / _currentScale;
 
   applyScale(newScale, originX, originY);
+  _targetScale = newScale;
   moveReveal(_lastMouseX, _lastMouseY);
 }, { passive: false });
 
@@ -2293,6 +2286,7 @@ if (!IS_MOBILE) {
         const newScale = Math.min(3, Math.max(min, raw));
         if (!isFinite(newScale) || newScale <= 0 || newScale < min) return;
         applyScale(newScale, snapMidX, snapMidY);
+        _targetScale = newScale;
       } catch (err) {
         // swallow — never let a zoom calc crash the page
       }
