@@ -24,6 +24,12 @@ html, body {
   height: 100vh;
   overflow: scroll;
   background: #fbfaf9;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+#scroll-wrap::-webkit-scrollbar {
+  display: none;
 }
 
 #stage {
