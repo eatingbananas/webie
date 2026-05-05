@@ -640,6 +640,10 @@ function placeItem(item) {
       return el;
     }
     const l1El = makeEl();
+    if (isVideo) {
+      l1El.src     = src;
+      l1El.preload = 'metadata';
+    }
     const riEl = makeEl();
     _pendingL1.appendChild(l1El);
     _pendingRI.appendChild(riEl);
@@ -648,19 +652,19 @@ function placeItem(item) {
     if (isVideo) {
       riEl.muted = true;  // frost copy is always muted — visual only, never produces sound
 
-      // Lazy-load: observe l1El; when it enters viewport load both copies then play.
+      // Lazy-load: observe l1El; when it enters viewport load riEl then play both.
       const videoObserver = new IntersectionObserver((entries, obs) => {
         if (!entries[0].isIntersecting) return;
         obs.disconnect();
-        const lazySrc = l1El.dataset.src;
+        const lazySrc = riEl.dataset.src;
         if (lazySrc) {
-          l1El.src    = lazySrc;
-          riEl.src    = lazySrc;
-          l1El.preload = 'auto';
+          riEl.src     = lazySrc;
           riEl.preload = 'auto';
         }
         l1El.play().catch(() => {});
         riEl.play().catch(() => {});
+        l1El.addEventListener('play',  () => { playBtn.textContent = 'pause'; });
+        l1El.addEventListener('pause', () => { playBtn.textContent = 'play';  });
       }, IS_MOBILE ? { rootMargin: '400px' } : { root: scrollWrap, rootMargin: '200px' });
       videoObserver.observe(l1El);
     }
@@ -702,7 +706,7 @@ function placeItem(item) {
       }
 
       // Play / pause
-      const playBtn = makeBtn('pause');
+      const playBtn = makeBtn('play');
       playBtn.addEventListener('click', () => {
         const v1 = /** @type {HTMLVideoElement} */ (l1El);
         const v2 = /** @type {HTMLVideoElement} */ (riEl);
