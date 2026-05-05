@@ -659,11 +659,9 @@ function placeItem(item) {
           l1El.preload = 'auto';
           riEl.preload = 'auto';
         }
-        if (!IS_MOBILE || item.id === '015') {
-          l1El.play().catch(() => {});
-          riEl.play().catch(() => {});
-        }
-      }, { root: scrollWrap, rootMargin: '200px' });
+        l1El.play().catch(() => {});
+        riEl.play().catch(() => {});
+      }, IS_MOBILE ? { rootMargin: '400px' } : { root: scrollWrap, rootMargin: '200px' });
       videoObserver.observe(l1El);
     }
     const placedEntry = { src, x, y, width, itemId: item.id, itemType: item.type || '', l1El, riEl, btns: [], timelineEl: null };
@@ -1495,11 +1493,13 @@ function _zoomFromCentre(newScale) {
 const zoomInBtn = document.createElement('div');
 zoomInBtn.textContent = '+';
 Object.assign(zoomInBtn.style, {
-  cursor:     'pointer',
-  lineHeight: '1',
-  fontSize:   IS_MOBILE ? Math.round(ZOOM_BTN_SIZE * 1.5) + 'px' : '',
-  padding:    IS_MOBILE ? '8px 10px' : '',
-  margin:     IS_MOBILE ? '-8px -10px' : '',
+  cursor:              'pointer',
+  lineHeight:          '1',
+  fontSize:            IS_MOBILE ? Math.round(ZOOM_BTN_SIZE * 1.5) + 'px' : '',
+  padding:             IS_MOBILE ? '8px 10px' : '',
+  margin:              IS_MOBILE ? '-8px -10px' : '',
+  userSelect:          'none',
+  WebkitUserSelect:    'none',
 });
 zoomInBtn.addEventListener('click', () => _zoomFromCentre(_targetScale + (IS_MOBILE ? 0.25 : ZOOM_STEP)));
 
@@ -1532,11 +1532,13 @@ function _updateScaleBar() {
 const zoomOutBtn = document.createElement('div');
 zoomOutBtn.textContent = '−';
 Object.assign(zoomOutBtn.style, {
-  cursor:     'pointer',
-  lineHeight: '1',
-  fontSize:   IS_MOBILE ? Math.round(ZOOM_BTN_SIZE * 1.5) + 'px' : '',
-  padding:    IS_MOBILE ? '8px 10px' : '',
-  margin:     IS_MOBILE ? '-8px -10px' : '',
+  cursor:              'pointer',
+  lineHeight:          '1',
+  fontSize:            IS_MOBILE ? Math.round(ZOOM_BTN_SIZE * 1.5) + 'px' : '',
+  padding:             IS_MOBILE ? '8px 10px' : '',
+  margin:              IS_MOBILE ? '-8px -10px' : '',
+  userSelect:          'none',
+  WebkitUserSelect:    'none',
 });
 zoomOutBtn.addEventListener('click', () => {
   console.log('[DBG] zoom-out button clicked | _currentScale before:', _currentScale);
