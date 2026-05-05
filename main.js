@@ -1898,10 +1898,8 @@ function applyScale(newScale, stageX, stageY) {
   stage.style.transform       = newScale !== 1 ? 'scale(' + newScale + ')' : '';
   updateSpacer();
 
-  const maxLeft = Math.max(0, scrollWrap.scrollWidth  - scrollWrap.clientWidth);
-  const maxTop  = Math.max(0, scrollWrap.scrollHeight - scrollWrap.clientHeight);
-  scrollWrap.scrollLeft = Math.max(0, Math.min(newScrollLeft, maxLeft));
-  scrollWrap.scrollTop  = Math.max(0, Math.min(newScrollTop,  maxTop));
+  scrollWrap.scrollLeft = newScrollLeft;
+  scrollWrap.scrollTop  = newScrollTop;
   if (typeof _updateScaleBar === 'function') _updateScaleBar();
 }
 
