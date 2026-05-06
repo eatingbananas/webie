@@ -35,17 +35,22 @@ const layer3      = document.createElement('div');
 const revealInner = document.createElement('div');
 
 Object.assign(layer3.style, {
-  position:      'fixed',
-  overflow:      'hidden',
-  pointerEvents: 'none',
-  zIndex:        '3',
-  top:           '-9999px',
-  left:          '-9999px',
+  position:           'fixed',
+  overflow:           'hidden',
+  pointerEvents:      'none',
+  zIndex:             '3',
+  top:                '0',
+  left:               '0',
+  transform:          'translate(-9999px, -9999px)',
+  willChange:         'transform',
+  backfaceVisibility: 'hidden',
 });
 
 Object.assign(revealInner.style, {
-  position:   'absolute',
-  background: 'rgba(255,255,255,0.75)',
+  position:           'absolute',
+  background:         'rgba(255,255,255,0.75)',
+  willChange:         'transform',
+  backfaceVisibility: 'hidden',
 });
 
 layer3.appendChild(revealInner);
@@ -1412,13 +1417,9 @@ async function initCursor() {
 function moveReveal(clientX, clientY) {
   if (!_pageReady) return;
   // layer3 is position:fixed on body — position directly from viewport coords.
-  layer3.style.left = (clientX - figW / 2) + 'px';
-  layer3.style.top  = (clientY - FIG_H / 2) + 'px';
-
   const z = _currentScale;
 
-  // Scale layer3 to match stage scale so silhouette matches content scale.
-  layer3.style.transform       = z !== 1 ? `scale(${z})` : '';
+  layer3.style.transform       = `translate(${clientX - figW / 2}px, ${clientY - FIG_H / 2}px) scale(${z})`;
   layer3.style.transformOrigin = 'center';
 
   // getBoundingClientRect reflects the visual position after CSS transform.
@@ -1426,15 +1427,13 @@ function moveReveal(clientX, clientY) {
   const visOffX = clientX - rect.left;
   const visOffY = clientY - rect.top;
 
-  revealInner.style.left = (figW  / 2 - visOffX / z) + 'px';
-  revealInner.style.top  = (FIG_H / 2 - visOffY / z) + 'px';
+  revealInner.style.transform = `translate(${figW / 2 - visOffX / z}px, ${FIG_H / 2 - visOffY / z}px)`;
 
   applyMemory(visOffX / z, visOffY / z);
 }
 
 function hideReveal() {
-  layer3.style.left = '-9999px';
-  layer3.style.top  = '-9999px';
+  layer3.style.transform = 'translate(-9999px, -9999px)';
 }
 
 initCursor();
@@ -1663,7 +1662,15 @@ Object.assign(zoomInBtn.style, {
   userSelect:          'none',
   WebkitUserSelect:    'none',
 });
-zoomInBtn.addEventListener('click', () => _zoomFromCentre(_targetScale + (IS_MOBILE ? 0.25 : ZOOM_STEP)));
+zoomInBtn.addEventListener('click', () => {
+  if (IS_MOBILE) {
+    const snapped = Math.floor(_targetScale / 0.25) * 0.25;
+    _zoomFromCentre(snapped + 0.25);
+  } else {
+    const snapped = Math.floor(_targetScale / ZOOM_STEP) * ZOOM_STEP;
+    _zoomFromCentre(snapped + ZOOM_STEP);
+  }
+});
 
 // Scale bar
 const scaleBarWrap = document.createElement('div');
@@ -1706,7 +1713,13 @@ zoomOutBtn.addEventListener('click', () => {
   console.log('[DBG] zoom-out button clicked | _currentScale before:', _currentScale);
   if (IS_MOBILE && _targetScale <= 0.75) return;
   try {
-    _zoomFromCentre(_targetScale - (IS_MOBILE ? 0.25 : ZOOM_STEP));
+    if (IS_MOBILE) {
+      const snapped = Math.ceil(_targetScale / 0.25) * 0.25;
+      _zoomFromCentre(snapped - 0.25);
+    } else {
+      const snapped = Math.ceil(_targetScale / ZOOM_STEP) * ZOOM_STEP;
+      _zoomFromCentre(snapped - ZOOM_STEP);
+    }
   } catch (err) {
     console.error('[DBG] zoom-out CRASHED:', err);
   }
@@ -1715,6 +1728,11 @@ zoomOutBtn.addEventListener('click', () => {
 zoomWrap.appendChild(zoomInBtn);
 zoomWrap.appendChild(scaleBarWrap);
 zoomWrap.appendChild(zoomOutBtn);
+if (!IS_MOBILE) {
+  zoomWrap.style.background    = 'rgba(240,238,235,0.6)';
+  zoomWrap.style.borderRadius  = '4px';
+  zoomWrap.style.padding       = '6px 4px';
+}
 document.body.appendChild(zoomWrap);
 
 // Show UI chrome immediately.
@@ -1778,6 +1796,40 @@ if (IS_MOBILE) {
   zoomOutBtn.addEventListener('click', _showZoomLabel);
 }
 // ── END MOBILE ZOOM SCALE INDICATOR ──────────────────────────────────────────
+
+// ── DESKTOP ZOOM SCALE INDICATOR ─────────────────────────────────────────────
+if (!IS_MOBILE) {
+  const _desktopZoomLabel = document.createElement('div');
+  Object.assign(_desktopZoomLabel.style, {
+    position:   'fixed',
+    left:       (ZOOM_BTN_LEFT + 20) + 'px',
+    top:        '50%',
+    transform:  'translateY(-50%)',
+    zIndex:     '10',
+    fontFamily: '"Lucida Grande", Verdana, Geneva, sans-serif',
+    fontSize:   '11px',
+    color:      '#aaa',
+    opacity:    '0',
+    transition: 'opacity 0.3s ease',
+    pointerEvents: 'none',
+    whiteSpace: 'nowrap',
+  });
+  document.body.appendChild(_desktopZoomLabel);
+
+  let _desktopZoomLabelTimer = null;
+
+  function _showDesktopZoomLabel() {
+    const mult = Math.round(_targetScale * 4) / 4;
+    _desktopZoomLabel.textContent = '×' + (Number.isInteger(mult) ? mult : mult.toFixed(2));
+    _desktopZoomLabel.style.opacity = '1';
+    clearTimeout(_desktopZoomLabelTimer);
+    _desktopZoomLabelTimer = setTimeout(() => { _desktopZoomLabel.style.opacity = '0'; }, 1500);
+  }
+
+  zoomInBtn.addEventListener('click',  _showDesktopZoomLabel);
+  zoomOutBtn.addEventListener('click', _showDesktopZoomLabel);
+}
+// ── END DESKTOP ZOOM SCALE INDICATOR ─────────────────────────────────────────
 
 // ── MOBILE SCROLL INDICATORS ──────────────────────────────────────────────────
 // Horizontal bar: top-centre — shows left/right progress.
@@ -2180,3 +2232,36 @@ if (!IS_MOBILE) {
   });
 }
 // ── END ZOOM ──────────────────────────────────────────────────────────────────
+
+// ── Desktop drag-to-pan ───────────────────────────────────────────────────────
+if (!IS_MOBILE) {
+  scrollWrap.style.cursor = 'grab';
+  let _dragging       = false;
+  let _dragStartX     = 0;
+  let _dragStartY     = 0;
+  let _dragScrollLeft = 0;
+  let _dragScrollTop  = 0;
+
+  scrollWrap.addEventListener('mousedown', e => {
+    if (e.button !== 0) return;
+    _dragging       = true;
+    _dragStartX     = e.clientX;
+    _dragStartY     = e.clientY;
+    _dragScrollLeft = scrollWrap.scrollLeft;
+    _dragScrollTop  = scrollWrap.scrollTop;
+    scrollWrap.style.cursor = 'grabbing';
+  });
+
+  window.addEventListener('mousemove', e => {
+    if (!_dragging) return;
+    scrollWrap.scrollLeft = _dragScrollLeft - (e.clientX - _dragStartX);
+    scrollWrap.scrollTop  = _dragScrollTop  - (e.clientY - _dragStartY);
+  });
+
+  window.addEventListener('mouseup', () => {
+    if (!_dragging) return;
+    _dragging = false;
+    scrollWrap.style.cursor = 'grab';
+  });
+}
+// ── END Desktop drag-to-pan ───────────────────────────────────────────────────
