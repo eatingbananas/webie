@@ -1209,24 +1209,45 @@ fetch('content.json')
           layer1.appendChild(_pendingL1);
           revealInner.appendChild(_pendingRI);
 
-          // Eager-load images within 800px of the landing viewport so they count
-          // toward the waitResolveAndCache load gate and appear without delay.
-          const landingSL     = scrollWrap.scrollLeft;
-          const landingST     = scrollWrap.scrollTop;
-          const vw            = scrollWrap.clientWidth;
-          const vh            = scrollWrap.clientHeight;
-          const EAGER_MARGIN  = 800;
-          const sc            = _currentScale;
-          layer1.querySelectorAll('img[data-src]').forEach(el => {
-            const ex = parseFloat(el.style.left) * sc - landingSL;
-            const ey = parseFloat(el.style.top)  * sc - landingST;
-            if (ex > -EAGER_MARGIN && ex < vw + EAGER_MARGIN &&
-                ey > -EAGER_MARGIN && ey < vh + EAGER_MARGIN) {
-              el.src = el.dataset.src;
-              if (el._riEl) el._riEl.src = el.dataset.src;
-              delete el.dataset.src;
-            }
-          });
+          // Eager-load images near the landing position so they count toward
+          // the waitResolveAndCache load gate and appear without delay.
+          const lazyImgs = Array.from(layer1.querySelectorAll('img[data-src]'));
+          if (IS_MOBILE) {
+            // On mobile the scroll position may not be committed yet; use
+            // distance from the landing centre in stage coordinates instead.
+            const landingCX = surfW / 2 + LANDING_OFFSET_X;
+            const landingCY = surfH / 2 + LANDING_OFFSET_Y;
+            lazyImgs
+              .map(el => {
+                const cx = parseFloat(el.style.left) + parseFloat(el.style.width) / 2;
+                const cy = parseFloat(el.style.top);
+                return { el, dist: Math.hypot(cx - landingCX, cy - landingCY) };
+              })
+              .sort((a, b) => a.dist - b.dist)
+              .slice(0, 12)
+              .forEach(({ el }) => {
+                el.src = el.dataset.src;
+                if (el._riEl) el._riEl.src = el.dataset.src;
+                delete el.dataset.src;
+              });
+          } else {
+            const landingSL    = scrollWrap.scrollLeft;
+            const landingST    = scrollWrap.scrollTop;
+            const vw           = scrollWrap.clientWidth;
+            const vh           = scrollWrap.clientHeight;
+            const EAGER_MARGIN = 800;
+            const sc           = _currentScale;
+            lazyImgs.forEach(el => {
+              const ex = parseFloat(el.style.left) * sc - landingSL;
+              const ey = parseFloat(el.style.top)  * sc - landingST;
+              if (ex > -EAGER_MARGIN && ex < vw + EAGER_MARGIN &&
+                  ey > -EAGER_MARGIN && ey < vh + EAGER_MARGIN) {
+                el.src = el.dataset.src;
+                if (el._riEl) el._riEl.src = el.dataset.src;
+                delete el.dataset.src;
+              }
+            });
+          }
 
           // Debounced frost cache rebuild — fires after lazy images load.
           let _cacheRebuildTimer = null;
@@ -1301,6 +1322,7 @@ async function initCursor() {
 }
 
 function moveReveal(clientX, clientY) {
+  if (stage.style.visibility === 'hidden') return;
   // layer3 is position:fixed on body — position directly from viewport coords.
   layer3.style.left = (clientX - figW / 2) + 'px';
   layer3.style.top  = (clientY - FIG_H / 2) + 'px';
