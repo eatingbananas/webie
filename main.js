@@ -339,7 +339,7 @@ function resolveProjectOverlaps() {
 // Wait for all layer1 images to load, resolve collisions, resize the surface to
 // fit all content, then build the frost cache and scroll to the new centre.
 function waitResolveAndCache() {
-  const imgs = Array.from(layer1.querySelectorAll('img'));
+  const imgs = Array.from(layer1.querySelectorAll('img')).filter(img => img.hasAttribute('src'));
   let pending = imgs.length;
 
   function finish() {
@@ -630,7 +630,7 @@ function placeItem(item) {
         el.controls    = false;
       } else {
         el = document.createElement('img');
-        el.src = src;
+        el.dataset.src = src;  // lazy-loaded by shared observer
       }
       el.style.position = 'absolute';
       el.style.left     = x + 'px';
@@ -645,6 +645,7 @@ function placeItem(item) {
       l1El.preload = 'metadata';
     }
     const riEl = makeEl();
+    if (!isVideo) l1El._riEl = riEl;
     _pendingL1.appendChild(l1El);
     _pendingRI.appendChild(riEl);
     // For video: call play() explicitly after insertion — needed in some browsers
@@ -1148,7 +1149,7 @@ fetch('content.json')
 
           function makeDumpEl() {
             const el = document.createElement('img');
-            el.src            = src;
+            el.dataset.src    = src;  // lazy-loaded by shared observer
             el.style.position = 'absolute';
             el.style.left     = x + 'px';
             el.style.top      = y + 'px';
@@ -1158,6 +1159,7 @@ fetch('content.json')
           }
           const l1El = makeDumpEl();
           const riEl = makeDumpEl();
+          l1El._riEl = riEl;
           _pendingL1.appendChild(l1El);
           _pendingRI.appendChild(riEl);
           allPlaced.push({ src, x, y, width: w, itemId: 'dump_' + filename, itemType: 'loose', l1El, riEl });
@@ -1206,6 +1208,52 @@ fetch('content.json')
           // Flush all layer1/revealInner elements at once — final positions already set.
           layer1.appendChild(_pendingL1);
           revealInner.appendChild(_pendingRI);
+
+          // Eager-load images within 800px of the landing viewport so they count
+          // toward the waitResolveAndCache load gate and appear without delay.
+          const landingSL     = scrollWrap.scrollLeft;
+          const landingST     = scrollWrap.scrollTop;
+          const vw            = scrollWrap.clientWidth;
+          const vh            = scrollWrap.clientHeight;
+          const EAGER_MARGIN  = 800;
+          const sc            = _currentScale;
+          layer1.querySelectorAll('img[data-src]').forEach(el => {
+            const ex = parseFloat(el.style.left) * sc - landingSL;
+            const ey = parseFloat(el.style.top)  * sc - landingST;
+            if (ex > -EAGER_MARGIN && ex < vw + EAGER_MARGIN &&
+                ey > -EAGER_MARGIN && ey < vh + EAGER_MARGIN) {
+              el.src = el.dataset.src;
+              if (el._riEl) el._riEl.src = el.dataset.src;
+              delete el.dataset.src;
+            }
+          });
+
+          // Debounced frost cache rebuild — fires after lazy images load.
+          let _cacheRebuildTimer = null;
+          function _debouncedCacheRebuild() {
+            clearTimeout(_cacheRebuildTimer);
+            _cacheRebuildTimer = setTimeout(() => {
+              if (frostCtx) buildImageCache(frostCanvas.width, frostCanvas.height);
+            }, 500);
+          }
+
+          // Shared lazy-load observer for all non-video images.
+          const lazyImgObserver = new IntersectionObserver((entries, obs) => {
+            entries.forEach(entry => {
+              if (!entry.isIntersecting) return;
+              const el = entry.target;
+              obs.unobserve(el);
+              if (!el.dataset.src) return;
+              const lazySrc = el.dataset.src;
+              el.src = lazySrc;
+              if (el._riEl) el._riEl.src = lazySrc;
+              delete el.dataset.src;
+              el.addEventListener('load', _debouncedCacheRebuild, { once: true });
+            });
+          }, IS_MOBILE ? { rootMargin: '400px' } : { root: scrollWrap, rootMargin: '400px' });
+
+          layer1.querySelectorAll('img[data-src]').forEach(el => lazyImgObserver.observe(el));
+
           drawFrost();
           waitResolveAndCache();
         });
