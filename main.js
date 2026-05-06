@@ -2,9 +2,7 @@
 
 document.documentElement.style.visibility = 'hidden';
 
-// ── Landing position offset from centre (px) ──────────────────────────────────
-const LANDING_OFFSET_X = -300;   // positive = scroll right
-const LANDING_OFFSET_Y = -180;   // positive = scroll down
+const LANDING_ITEM_ID = '013';
 
 // Declared early so _mirrorLoop IIFE can read it before the zoom block below.
 let _currentScale = 1;
@@ -452,8 +450,6 @@ function waitResolveAndCache() {
     buildImageCache(eW, eH);
 
     updateSpacer();
-    scrollWrap.scrollLeft = surfW / 2 - scrollWrap.clientWidth  / 2 + LANDING_OFFSET_X;
-    scrollWrap.scrollTop  = surfH / 2 - scrollWrap.clientHeight / 2 + LANDING_OFFSET_Y;
 
     // ── Mobile scroll bounds ─────────────────────────────────────────────────
     // Layers, canvas, and image cache keep their full computed dimensions.
@@ -1075,6 +1071,32 @@ function placeUpdateLog(entries) {
 const _pendingL1 = document.createDocumentFragment();
 const _pendingRI = document.createDocumentFragment();
 
+// Returns the stage-coordinate centre of the landing item, plus ready-made
+// scrollLeft/scrollTop values. Falls back to surface centre if not yet placed.
+function _landingPos() {
+  const p = allPlaced.find(p => p.itemId === LANDING_ITEM_ID);
+  if (p) {
+    const ix = parseFloat(p.l1El.style.left);
+    const iy = parseFloat(p.l1El.style.top);
+    const iw = p.width;
+    const ih = p.l1El.offsetHeight || Math.round(iw * 1.3);
+    const cx = ix + iw / 2;
+    const cy = iy + ih / 2;
+    return {
+      cx,
+      cy,
+      left: cx * _currentScale - scrollWrap.clientWidth  / 2,
+      top:  cy * _currentScale - scrollWrap.clientHeight / 2,
+    };
+  }
+  return {
+    cx:   surfW / 2,
+    cy:   surfH / 2,
+    left: surfW / 2 - scrollWrap.clientWidth  / 2,
+    top:  surfH / 2 - scrollWrap.clientHeight / 2,
+  };
+}
+
 // ── Fetch content ─────────────────────────────────────────────────────────────
 fetch('content.json')
   .then(r => {
@@ -1116,8 +1138,7 @@ fetch('content.json')
     stage.style.visibility = '';
     document.documentElement.style.visibility = 'visible';
     updateSpacer();
-    scrollWrap.scrollLeft = surfW / 2 - scrollWrap.clientWidth  / 2 + LANDING_OFFSET_X;
-    scrollWrap.scrollTop  = surfH / 2 - scrollWrap.clientHeight / 2 + LANDING_OFFSET_Y;
+    { const _lp = _landingPos(); scrollWrap.scrollLeft = _lp.left; scrollWrap.scrollTop = _lp.top; }
     _loadingEl.remove();
     _spinStyle.remove();
 
@@ -1270,8 +1291,7 @@ fetch('content.json')
 
         Promise.all([...txtPromises, ulPromise]).then(() => {
           // Pre-position scroll before elements appear so there's no visible jump.
-          scrollWrap.scrollLeft = surfW / 2 - scrollWrap.clientWidth  / 2 + LANDING_OFFSET_X;
-          scrollWrap.scrollTop  = surfH / 2 - scrollWrap.clientHeight / 2 + LANDING_OFFSET_Y;
+          { const _lp = _landingPos(); scrollWrap.scrollLeft = _lp.left; scrollWrap.scrollTop = _lp.top; }
           // Flush all layer1/revealInner elements at once — final positions already set.
           layer1.appendChild(_pendingL1);
           revealInner.appendChild(_pendingRI);
@@ -1283,8 +1303,7 @@ fetch('content.json')
           if (IS_MOBILE) {
             // On mobile the scroll position may not be committed yet; use
             // distance from the landing centre in stage coordinates instead.
-            const landingCX = surfW / 2 + LANDING_OFFSET_X;
-            const landingCY = surfH / 2 + LANDING_OFFSET_Y;
+            const { cx: landingCX, cy: landingCY } = _landingPos();
             lazyImgs
               .map(el => {
                 const cx = parseFloat(el.style.left) + parseFloat(el.style.width) / 2;
