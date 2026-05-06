@@ -217,6 +217,64 @@ function buildImageCache(eW, eH) {
   });
 }
 
+function drawImageIntoFrost(l1El, width) {
+  if (!frostCtx) return;
+  if (!imageCache) {
+    const c   = document.createElement('canvas');
+    c.width   = frostCanvas.width;
+    c.height  = frostCanvas.height;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#f0eeeb';
+    ctx.fillRect(0, 0, c.width, c.height);
+    imageCache = c;
+  }
+  const ctx = imageCache.getContext('2d');
+  const x   = parseFloat(l1El.style.left) * MEM_SCALE;
+  const y   = parseFloat(l1El.style.top)  * MEM_SCALE;
+  const w   = width * MEM_SCALE;
+  const h   = (l1El instanceof HTMLVideoElement)
+    ? (l1El.videoHeight > 0 ? l1El.videoHeight * (width / l1El.videoWidth) * MEM_SCALE : w * 0.75)
+    : (l1El.naturalWidth  > 0 ? l1El.naturalHeight * (width / l1El.naturalWidth) * MEM_SCALE : w * 0.75);
+  ctx.drawImage(l1El, x, y, w, h);
+}
+
+function drawTextsIntoFrost() {
+  if (!frostCtx) return;
+  if (!imageCache) {
+    const c   = document.createElement('canvas');
+    c.width   = frostCanvas.width;
+    c.height  = frostCanvas.height;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#f0eeeb';
+    ctx.fillRect(0, 0, c.width, c.height);
+    imageCache = c;
+  }
+  const ctx = imageCache.getContext('2d');
+  layer1.querySelectorAll('.surface-text').forEach(el => {
+    const x    = parseFloat(el.style.left)     * MEM_SCALE;
+    const y    = parseFloat(el.style.top)      * MEM_SCALE;
+    const size = parseFloat(el.style.fontSize) * MEM_SCALE;
+    const maxW = parseFloat(el.style.maxWidth) * MEM_SCALE;
+    ctx.save();
+    ctx.fillStyle = '#333';
+    ctx.font      = `${size}px "Lucida Grande", Arial, sans-serif`;
+    const words   = el.textContent.split(' ');
+    let line = '', lineY = y + size;
+    for (const word of words) {
+      const test = line ? line + ' ' + word : word;
+      if (ctx.measureText(test).width > maxW && line) {
+        ctx.fillText(line, x, lineY);
+        line  = word;
+        lineY += size * 1.5;
+      } else {
+        line = test;
+      }
+    }
+    if (line) ctx.fillText(line, x, lineY);
+    ctx.restore();
+  });
+}
+
 // ── Project collision resolution ──────────────────────────────────────────────
 // Per-image collision resolver. Minimum gap between any two images: 30px.
 // Between images from different projects: 200px gap, UNLESS either image's
@@ -1217,6 +1275,7 @@ fetch('content.json')
           // Flush all layer1/revealInner elements at once — final positions already set.
           layer1.appendChild(_pendingL1);
           revealInner.appendChild(_pendingRI);
+          drawTextsIntoFrost();
 
           // Eager-load images near the landing position so they count toward
           // the waitResolveAndCache load gate and appear without delay.
@@ -1238,7 +1297,11 @@ fetch('content.json')
                 el.src = el.dataset.src;
                 if (el._riEl) el._riEl.src = el.dataset.src;
                 delete el.dataset.src;
-                el.addEventListener('load', () => buildImageCache(frostCanvas.width, frostCanvas.height), { once: true });
+                if (el.complete && el.naturalWidth > 0) {
+                  drawImageIntoFrost(el, parseFloat(el.style.width));
+                } else {
+                  el.addEventListener('load', () => drawImageIntoFrost(el, parseFloat(el.style.width)), { once: true });
+                }
               });
           } else {
             const landingSL    = scrollWrap.scrollLeft;
@@ -1255,18 +1318,13 @@ fetch('content.json')
                 el.src = el.dataset.src;
                 if (el._riEl) el._riEl.src = el.dataset.src;
                 delete el.dataset.src;
-                el.addEventListener('load', () => buildImageCache(frostCanvas.width, frostCanvas.height), { once: true });
+                if (el.complete && el.naturalWidth > 0) {
+                  drawImageIntoFrost(el, parseFloat(el.style.width));
+                } else {
+                  el.addEventListener('load', () => drawImageIntoFrost(el, parseFloat(el.style.width)), { once: true });
+                }
               }
             });
-          }
-
-          // Debounced frost cache rebuild — fires after lazy images load.
-          let _cacheRebuildTimer = null;
-          function _debouncedCacheRebuild() {
-            clearTimeout(_cacheRebuildTimer);
-            _cacheRebuildTimer = setTimeout(() => {
-              if (frostCtx) buildImageCache(frostCanvas.width, frostCanvas.height);
-            }, 500);
           }
 
           // Shared lazy-load observer for all non-video images.
@@ -1280,7 +1338,7 @@ fetch('content.json')
               el.src = lazySrc;
               if (el._riEl) el._riEl.src = lazySrc;
               delete el.dataset.src;
-              el.addEventListener('load', _debouncedCacheRebuild, { once: true });
+              el.addEventListener('load', () => drawImageIntoFrost(el, parseFloat(el.style.width)), { once: true });
             });
           }, IS_MOBILE ? { rootMargin: '400px' } : { root: scrollWrap, rootMargin: '400px' });
 
