@@ -1678,6 +1678,11 @@ Object.assign(scaleBarFill.style, {
   transition: 'height 0.15s ease',
 });
 scaleBarWrap.appendChild(scaleBarFill);
+if (IS_MOBILE) {
+  scaleBarWrap.style.height        = '120px';
+  scaleBarWrap.style.pointerEvents = 'auto';
+  scaleBarWrap.style.cursor        = 'pointer';
+}
 
 function _updateScaleBar() {
   const min = IS_MOBILE ? 0.75 : getMinScale();
@@ -1782,6 +1787,31 @@ if (IS_MOBILE) {
 
   zoomInBtn.addEventListener('click',  _showZoomLabel);
   zoomOutBtn.addEventListener('click', _showZoomLabel);
+
+  scaleBarWrap.addEventListener('click', e => {
+    const rect = scaleBarWrap.getBoundingClientRect();
+    const pct  = 1 - (e.clientY - rect.top) / rect.height;
+    const min  = 0.75, max = 2;
+    _zoomFromCentre(min + pct * (max - min));
+    _showZoomLabel();
+  });
+
+  let _barDragging = false;
+  scaleBarWrap.addEventListener('touchstart', e => {
+    e.preventDefault();
+    _barDragging = true;
+  }, { passive: false });
+  scaleBarWrap.addEventListener('touchmove', e => {
+    if (!_barDragging) return;
+    e.preventDefault();
+    const t    = e.touches[0];
+    const rect = scaleBarWrap.getBoundingClientRect();
+    const pct  = Math.max(0, Math.min(1, 1 - (t.clientY - rect.top) / rect.height));
+    const min  = 0.75, max = 2;
+    _zoomFromCentre(min + pct * (max - min));
+    _showZoomLabel();
+  }, { passive: false });
+  scaleBarWrap.addEventListener('touchend', () => { _barDragging = false; }, { passive: true });
 }
 // ── END MOBILE ZOOM SCALE INDICATOR ──────────────────────────────────────────
 
