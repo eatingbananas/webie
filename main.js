@@ -56,10 +56,11 @@ Object.assign(revealInner.style, {
 layer3.appendChild(revealInner);
 document.body.appendChild(layer3);
 
-// ── Button label overlay ──────────────────────────────────────────────────────
-// Mirrors play/pause/view/unmute/read label text at z-index 4 (above layer3:3)
-// so it remains readable even when the silhouette hovers over a button.
+// ── Button overlay ────────────────────────────────────────────────────────────
+// play/pause/view/unmute/read buttons live here at z-index 4 (above layer3:3).
 // Position is synced every frame via rAF using scrollWrap scroll + stage zoom.
+// Each button stores _absX/_absY (unscaled stage coords); the loop converts to
+// viewport coords each frame so buttons always track their video on screen.
 const _btnOverlay = document.createElement('div');
 Object.assign(_btnOverlay.style, {
   position:      'fixed',
@@ -74,32 +75,15 @@ Object.assign(_btnOverlay.style, {
 });
 document.body.appendChild(_btnOverlay);
 
-const _btnMirrors = [];  // { srcEl, el, absX, absY }
-
-function _addBtnMirror(srcEl, absX, absY) {
-  const el = document.createElement('div');
-  Object.assign(el.style, {
-    position:   'absolute',
-    fontFamily: '"Lucida Grande", Verdana, Geneva, sans-serif',
-    fontSize:   '10px',
-    color:      '#333',
-    whiteSpace: 'nowrap',
-  });
-  _btnOverlay.appendChild(el);
-  _btnMirrors.push({ srcEl, el, absX, absY });
-}
-
 (function _mirrorLoop() {
   const sl = scrollWrap.scrollLeft;
   const st = scrollWrap.scrollTop;
   const z  = _currentScale;
-  for (const m of _btnMirrors) {
-    const ax = parseFloat(m.srcEl.style.left)  || m.absX;
-    const ay = parseFloat(m.srcEl.style.top)   || m.absY;
-    m.el.style.left        = Math.round(ax * z - sl) + 'px';
-    m.el.style.top         = Math.round(ay * z - st) + 'px';
-    m.el.style.fontSize    = Math.round(10 * z) + 'px';
-    m.el.textContent       = m.srcEl.textContent;
+  for (const btn of _btnOverlay.children) {
+    if (btn._absX === undefined) continue;
+    btn.style.left     = Math.round(btn._absX * z - sl) + 'px';
+    btn.style.top      = Math.round(btn._absY * z - st) + 'px';
+    btn.style.fontSize = Math.round(10 * z) + 'px';
   }
   requestAnimationFrame(_mirrorLoop);
 })();
@@ -314,8 +298,8 @@ function resolveProjectOverlaps() {
     // Move buttons and timeline with the video.
     if (p.btns) {
       for (const btn of p.btns) {
-        btn.style.left = Math.round(parseFloat(btn.style.left) + dx) + 'px';
-        btn.style.top  = Math.round(parseFloat(btn.style.top)  + dy) + 'px';
+        btn._absX = Math.round((btn._absX || 0) + dx);
+        btn._absY = Math.round((btn._absY || 0) + dy);
       }
     }
     if (p.timelineEl) {
@@ -747,18 +731,19 @@ function placeItem(item) {
         el.textContent = label;
         Object.assign(el.style, {
           position:      'absolute',
-          left:          (btnX + btnOffX) + 'px',
-          top:           btnY + 'px',
           fontFamily:    '"Lucida Grande", Verdana, Geneva, sans-serif',
           fontSize:      '10px',
-          color:         'transparent',  // invisible — mirror at z-index 4 handles display
+          color:         '#333',
           cursor:        'pointer',
           userSelect:    'none',
           pointerEvents: 'auto',
           padding:       '10px 14px',
           margin:        '-10px -14px',
+          whiteSpace:    'nowrap',
         });
-        layer2.appendChild(el);
+        el._absX = btnX + btnOffX;
+        el._absY = btnY;
+        _btnOverlay.appendChild(el);
         btnOffX += 70;
         return el;
       }
@@ -815,7 +800,7 @@ function placeItem(item) {
       muteBtn.addEventListener('click', () => {
         if (l1El.muted) {
           layer1.querySelectorAll('video').forEach(v => { v.muted = true; });
-          stage.querySelectorAll('.mute-btn').forEach(b => { b.textContent = 'unmute'; });
+          _btnOverlay.querySelectorAll('.mute-btn').forEach(b => { b.textContent = 'unmute'; });
           l1El.muted = false;
           muteBtn.textContent = 'mute';
         } else {
@@ -825,9 +810,6 @@ function placeItem(item) {
       });
 
 
-      _addBtnMirror(playBtn, parseFloat(playBtn.style.left), parseFloat(playBtn.style.top));
-      _addBtnMirror(viewBtn, parseFloat(viewBtn.style.left), parseFloat(viewBtn.style.top));
-      _addBtnMirror(muteBtn, parseFloat(muteBtn.style.left), parseFloat(muteBtn.style.top));
       placedEntry.btns.push(playBtn, viewBtn, muteBtn);
 
       // ── Timeline: always visible, fixed at bottom of video ───────────────────
@@ -983,17 +965,18 @@ function placeItem(item) {
     readBtn.textContent = 'read';
     Object.assign(readBtn.style, {
       position:      'absolute',
-      left:          readBtnX + 'px',
-      top:           readBtnY + 'px',
       fontFamily:    '"Lucida Grande", Verdana, Geneva, sans-serif',
       fontSize:      '10px',
-      color:         'transparent',  // invisible — mirror at z-index 4 handles display
+      color:         '#333',
       cursor:        'pointer',
       userSelect:    'none',
       pointerEvents: 'auto',
       padding:       '10px 14px',
       margin:        '-10px -14px',
+      whiteSpace:    'nowrap',
     });
+    readBtn._absX = readBtnX;
+    readBtn._absY = readBtnY;
 
     let _readRect    = null;
     let _readTimeout = null;
@@ -1028,8 +1011,7 @@ function placeItem(item) {
       }, 12000);
     });
 
-    layer2.appendChild(readBtn);
-    _addBtnMirror(readBtn, parseFloat(readBtn.style.left), parseFloat(readBtn.style.top));
+    _btnOverlay.appendChild(readBtn);
   }
 }
 
@@ -1444,16 +1426,16 @@ requestAnimationFrame(restoreLoop);
 // play() on every video. If a play() fails, the next interaction retries it.
 // Listeners are re-registered after each firing until all videos are playing.
 function tryPlayAllVideos() {
-  let anyPaused = false;
+  let anyBlocked = false;
   document.querySelectorAll('video').forEach(v => {
     if (!v.src) return;  // not yet lazy-loaded — skip
-    if (v.paused) {
-      anyPaused = true;
+    // Only attempt play on videos that have never played — skip manually paused ones.
+    if (v.paused && v.played.length === 0) {
+      anyBlocked = true;
       v.play().catch(() => {});
     }
   });
-  // Re-register if any video is still paused after this attempt
-  if (anyPaused) registerVideoPlayListeners();
+  if (anyBlocked) registerVideoPlayListeners();
 }
 
 function registerVideoPlayListeners() {
@@ -2244,6 +2226,7 @@ if (!IS_MOBILE) {
 
   scrollWrap.addEventListener('mousedown', e => {
     if (e.button !== 0) return;
+    if (e.target.closest('button, a, input, video, select, textarea')) return;
     _dragging       = true;
     _dragStartX     = e.clientX;
     _dragStartY     = e.clientY;
