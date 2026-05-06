@@ -663,8 +663,7 @@ function placeItem(item) {
         }
         l1El.play().catch(() => {});
         riEl.play().catch(() => {});
-        l1El.addEventListener('play',  () => { playBtn.textContent = 'pause'; });
-        l1El.addEventListener('pause', () => { playBtn.textContent = 'play';  });
+        riEl.addEventListener('loadeddata', () => { riEl.currentTime = l1El.currentTime; }, { once: true });
       }, IS_MOBILE ? { rootMargin: '400px' } : { root: scrollWrap, rootMargin: '200px' });
       videoObserver.observe(l1El);
     }
@@ -707,6 +706,9 @@ function placeItem(item) {
 
       // Play / pause
       const playBtn = makeBtn('play');
+      l1El.addEventListener('play',  () => { playBtn.textContent = 'pause'; });
+      l1El.addEventListener('pause', () => { playBtn.textContent = 'play';  });
+      if (!l1El.paused) playBtn.textContent = 'pause';
       playBtn.addEventListener('click', () => {
         const v1 = /** @type {HTMLVideoElement} */ (l1El);
         const v2 = /** @type {HTMLVideoElement} */ (riEl);
