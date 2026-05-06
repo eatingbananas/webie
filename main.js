@@ -7,6 +7,8 @@ const LANDING_ITEM_ID = '013';
 // Declared early so _mirrorLoop IIFE can read it before the zoom block below.
 let _currentScale = 1;
 
+const _manuallyPaused = new WeakSet();
+
 const layer1 = document.getElementById('layer1');
 const layer2 = document.getElementById('layer2');
 const stage  = document.getElementById('stage');
@@ -757,10 +759,14 @@ function placeItem(item) {
         const v1 = /** @type {HTMLVideoElement} */ (l1El);
         const v2 = /** @type {HTMLVideoElement} */ (riEl);
         if (v1.paused) {
+          _manuallyPaused.delete(v1);
+          _manuallyPaused.delete(v2);
           v1.play().catch(() => {});
           v2.play().catch(() => {});
           playBtn.textContent = 'pause';
         } else {
+          _manuallyPaused.add(v1);
+          _manuallyPaused.add(v2);
           v1.pause();
           v2.pause();
           playBtn.textContent = 'play';
@@ -1429,8 +1435,8 @@ function tryPlayAllVideos() {
   let anyBlocked = false;
   document.querySelectorAll('video').forEach(v => {
     if (!v.src) return;  // not yet lazy-loaded — skip
-    // Only attempt play on videos that have never played — skip manually paused ones.
-    if (v.paused && v.played.length === 0) {
+    // Only attempt play on videos not explicitly paused by the user.
+    if (v.paused && !_manuallyPaused.has(v)) {
       anyBlocked = true;
       v.play().catch(() => {});
     }
