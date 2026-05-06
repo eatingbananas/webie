@@ -133,6 +133,7 @@ const DEPOSIT_ALPHA = 0.15;
 
 let eCtx  = null;
 let surfW = 0, surfH = 0;
+let _pageReady = false;
 let maxSurfW = 0, maxSurfH = 0;  // declared size from content.json — zoom floor reference
 let lastMemX = -Infinity, lastMemY = -Infinity;
 const erosionCanvas = document.createElement('canvas');
@@ -425,11 +426,9 @@ function waitResolveAndCache() {
       setTimeout(_posGW, 600);  // retry after Firebase entries may have shifted layout
 
     }
-    if (IS_MOBILE && figW > 0) mob_initPosition();
-    stage.style.visibility = '';
+    _pageReady = true;
     _btnOverlay.style.visibility = '';
-    _loadingEl.remove();
-    _spinStyle.remove();
+    if (IS_MOBILE && figW > 0) mob_initPosition();
   }
 
   if (pending === 0) { finish(); return; }
@@ -1053,6 +1052,14 @@ fetch('content.json')
     frostCanvas.style.width  = w;
     frostCanvas.style.height = h;
     frostCtx = frostCanvas.getContext('2d');
+    drawFrost();
+    stage.style.visibility = '';
+    document.documentElement.style.visibility = 'visible';
+    updateSpacer();
+    scrollWrap.scrollLeft = surfW / 2 - scrollWrap.clientWidth  / 2 + LANDING_OFFSET_X;
+    scrollWrap.scrollTop  = surfH / 2 - scrollWrap.clientHeight / 2 + LANDING_OFFSET_Y;
+    _loadingEl.remove();
+    _spinStyle.remove();
 
     data.items.forEach(placeItem);
 
@@ -1229,6 +1236,7 @@ fetch('content.json')
                 el.src = el.dataset.src;
                 if (el._riEl) el._riEl.src = el.dataset.src;
                 delete el.dataset.src;
+                el.addEventListener('load', () => buildImageCache(frostCanvas.width, frostCanvas.height), { once: true });
               });
           } else {
             const landingSL    = scrollWrap.scrollLeft;
@@ -1245,6 +1253,7 @@ fetch('content.json')
                 el.src = el.dataset.src;
                 if (el._riEl) el._riEl.src = el.dataset.src;
                 delete el.dataset.src;
+                el.addEventListener('load', () => buildImageCache(frostCanvas.width, frostCanvas.height), { once: true });
               }
             });
           }
@@ -1322,7 +1331,7 @@ async function initCursor() {
 }
 
 function moveReveal(clientX, clientY) {
-  if (stage.style.visibility === 'hidden') return;
+  if (!_pageReady) return;
   // layer3 is position:fixed on body — position directly from viewport coords.
   layer3.style.left = (clientX - figW / 2) + 'px';
   layer3.style.top  = (clientY - FIG_H / 2) + 'px';
@@ -1629,9 +1638,8 @@ zoomWrap.appendChild(scaleBarWrap);
 zoomWrap.appendChild(zoomOutBtn);
 document.body.appendChild(zoomWrap);
 
-// Show UI chrome immediately; hide stage until images are positioned.
+// Show UI chrome immediately.
 document.documentElement.style.visibility = 'visible';
-stage.style.visibility = 'hidden';
 
 const _loadingEl = document.createElement('div');
 Object.assign(_loadingEl.style, {
@@ -1934,7 +1942,7 @@ if ('ontouchstart' in window) {
 
   // Place figure at centre once figW is available (initCursor is async).
   const mob_waitForFigW = setInterval(() => {
-    if (figW > 0) {
+    if (figW > 0 && _pageReady) {
       clearInterval(mob_waitForFigW);
       mob_initPosition();
     }
