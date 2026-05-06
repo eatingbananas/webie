@@ -664,7 +664,7 @@ function placeItem(item) {
       if (isVideo) {
         el = document.createElement('video');
         el.dataset.src = src;  // real src stored here; loaded lazily by observer
-        el.autoplay    = IS_MOBILE ? item.id === '015' : true;
+        el.autoplay    = true;
         el.loop        = true;
         el.muted       = true;
         el.playsInline = true;
