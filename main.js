@@ -909,15 +909,12 @@ function placeItem(item) {
 
       const timelineTrack = document.createElement('div');
       Object.assign(timelineTrack.style, {
-        flex:         '1',
-        height:       '5px',
-        background:   'rgba(0,0,0,0.12)',
-        cursor:       'pointer',
-        position:     'relative',
-        borderRadius: '3px',
-        padding:      IS_MOBILE ? '' : '8px 0',
-        margin:       IS_MOBILE ? '' : '-8px 0',
-        boxSizing:    'content-box',
+        width:         '100%',
+        height:        '5px',
+        background:    'rgba(0,0,0,0.12)',
+        position:      'relative',
+        borderRadius:  '3px',
+        pointerEvents: 'none',
       });
       const timelineFill = document.createElement('div');
       Object.assign(timelineFill.style, {
@@ -931,7 +928,18 @@ function placeItem(item) {
         pointerEvents: 'none',
       });
       timelineTrack.appendChild(timelineFill);
-      timelineRow.appendChild(timelineTrack);
+
+      const timelineHit = document.createElement('div');
+      Object.assign(timelineHit.style, {
+        flex:        '1',
+        display:     'flex',
+        alignItems:  'center',
+        cursor:      'pointer',
+        padding:     IS_MOBILE ? '0' : '10px 0',
+        margin:      IS_MOBILE ? '0' : '-10px 0',
+      });
+      timelineHit.appendChild(timelineTrack);
+      timelineRow.appendChild(timelineHit);
 
       const totalTimeEl = document.createElement('div');
       totalTimeEl.textContent = '0:00';
@@ -965,7 +973,7 @@ function placeItem(item) {
           currentTimeEl.textContent = fmtTime(t);
         }
       }
-      timelineTrack.addEventListener('mousedown', e => {
+      timelineHit.addEventListener('mousedown', e => {
         clearTimeout(_scrubEndTimer);
         _scrubbing = true;
         seekFromEvent(e);
