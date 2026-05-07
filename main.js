@@ -1278,13 +1278,14 @@ fetch('content.json')
           let w       = IS_MOBILE ? Math.round(wBase * MOB_IMG_SCALE) : wBase;
           const pad   = 60;
           let x, y;
-          if (!IS_MOBILE && deskPos[filename]) {
+          if (IS_MOBILE && mobPos[filename]) {
+            x = mobPos[filename].mx;
+            y = mobPos[filename].my;
+            if (mobPos[filename].mw) w = mobPos[filename].mw;
+          } else if (!IS_MOBILE && deskPos[filename]) {
             x = deskPos[filename].x;
             y = deskPos[filename].y;
             if (deskPos[filename].width) w = deskPos[filename].width;
-          } else if (IS_MOBILE && mobPos[filename]) {
-            x = mobPos[filename].mx;
-            y = mobPos[filename].my;
           } else if (IS_MOBILE) {
             const estH  = Math.round(w * 1.3);
             const TRIES = 12;
