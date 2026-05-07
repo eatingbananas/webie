@@ -687,6 +687,9 @@ function placeItem(item) {
     if (isVideo) {
       l1El.src     = src;
       l1El.preload = 'metadata';
+      if (IS_MOBILE && src === 'WORKimages/2025_BirthLookReveal.mp4') {
+        /** @type {HTMLVideoElement} */ (l1El).poster = 'WORKimages/2025_Birthlook_3.jpeg';
+      }
       if (IS_MOBILE) {
         l1El.addEventListener('loadeddata', () => {
           const v = /** @type {HTMLVideoElement} */ (l1El);
