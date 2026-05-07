@@ -471,8 +471,8 @@ function waitResolveAndCache() {
       const _posGW = () => {
         const gwEl = document.getElementById('guestweb-area');
         if (!gwEl) return;
-        gwEl.style.left = '450px';
-        gwEl.style.top  = '2600px';
+        gwEl.style.left = '50px';
+        gwEl.style.top  = '2000px';
       };
       setTimeout(_posGW, 0);
       setTimeout(_posGW, 600);  // retry after Firebase entries may have shifted layout
@@ -2638,23 +2638,53 @@ if (!IS_MOBILE) {
   }
 
   function _log() {
-    const out = {};
-    allPlaced.forEach(({ l1El, src }) => {
-      out[src] = {
-        x:     Math.round(parseFloat(l1El.style.left)),
-        y:     Math.round(parseFloat(l1El.style.top)),
-        width: Math.round(parseFloat(l1El.style.width)),
-      };
-    });
-    console.log(JSON.stringify(out, null, 2));
-    const textOut = {};
-    allTexts.forEach(({ el, textId }) => {
-      textOut[textId] = {
-        x: Math.round(parseFloat(el.style.left)),
-        y: Math.round(parseFloat(el.style.top)),
-      };
-    });
-    console.log('texts:', JSON.stringify(textOut, null, 2));
+    if (IS_MOBILE) {
+      // WORKimages → mx/my/mw for content.json
+      // mw is stored pre-halve so mobilizeImage(* MOB_IMG_SCALE) reproduces the current size.
+      const workOut = {};
+      const dumpOut = {};
+      allPlaced.forEach(({ l1El, src, itemId }) => {
+        const mx = Math.round(parseFloat(l1El.style.left));
+        const my = Math.round(parseFloat(l1El.style.top));
+        const rw = Math.round(parseFloat(l1El.style.width));
+        if (itemId && itemId.startsWith('dump_')) {
+          // DUMPimages: mw used directly, no halving
+          const filename = src.split('/').pop();
+          dumpOut[filename] = { mx, my, mw: rw };
+        } else {
+          // WORKimages: mobilizeImage halves mw, so store rw * 2
+          workOut[src] = { mx, my, mw: rw * 2 };
+        }
+      });
+      console.log('WORKimages (content.json mx/my/mw):', JSON.stringify(workOut, null, 2));
+      console.log('DUMPimages (mobile_positions.json mx/my/mw):', JSON.stringify(dumpOut, null, 2));
+      const textOut = {};
+      allTexts.forEach(({ el, textId }) => {
+        textOut[textId] = {
+          mx: Math.round(parseFloat(el.style.left)),
+          my: Math.round(parseFloat(el.style.top)),
+        };
+      });
+      console.log('texts (mx/my):', JSON.stringify(textOut, null, 2));
+    } else {
+      const out = {};
+      allPlaced.forEach(({ l1El, src }) => {
+        out[src] = {
+          x:     Math.round(parseFloat(l1El.style.left)),
+          y:     Math.round(parseFloat(l1El.style.top)),
+          width: Math.round(parseFloat(l1El.style.width)),
+        };
+      });
+      console.log(JSON.stringify(out, null, 2));
+      const textOut = {};
+      allTexts.forEach(({ el, textId }) => {
+        textOut[textId] = {
+          x: Math.round(parseFloat(el.style.left)),
+          y: Math.round(parseFloat(el.style.top)),
+        };
+      });
+      console.log('texts:', JSON.stringify(textOut, null, 2));
+    }
   }
 
   function _exit() {
