@@ -687,6 +687,12 @@ function placeItem(item) {
     if (isVideo) {
       l1El.src     = src;
       l1El.preload = 'metadata';
+      if (IS_MOBILE) {
+        l1El.addEventListener('loadeddata', () => {
+          const v = /** @type {HTMLVideoElement} */ (l1El);
+          v.play().then(() => v.pause()).catch(() => {});
+        }, { once: true });
+      }
     }
     const riEl = makeEl();
     if (!isVideo) l1El._riEl = riEl;
