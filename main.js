@@ -1682,7 +1682,6 @@ let scaleBarDot = null;
 
 if (IS_MOBILE) {
   scaleBarWrap.style.width             = '30px';
-  scaleBarWrap.style.marginLeft        = '-14px';
   scaleBarWrap.style.background        = 'transparent';
   scaleBarWrap.style.height            = '120px';
   scaleBarWrap.style.pointerEvents     = 'auto';
