@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>helenyzh</title>
-  <link rel="icon" type="image/x-icon" href="/Assets/Favicon_2.png">
+  <link rel="icon" type="image/x-icon" href="/Assets/.png">
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -32,8 +32,8 @@
 
     // ── GuestWeb ──────────────────────────────────────────────────────────────
     const IS_MOBILE = window.innerWidth < 768 || new URLSearchParams(window.location.search).has('mob');
-    const GW_X = IS_MOBILE ? 450  : 3600;
-    const GW_Y = IS_MOBILE ? 2600 : 1000;
+    const GW_X = IS_MOBILE ? 50   : 3600;
+    const GW_Y = IS_MOBILE ? 2000 : 1000;
 
     // Expose coords so the main.js GuestWeb link can scroll to this position.
     document.body.dataset.gwX = GW_X;
