@@ -20,8 +20,8 @@
         {
           "src": "WORKimages/2024_Marlborough_Road_2.jpg",
           "width": 208,
-          "x": 798,
-          "y": 296,
+          "x": 822,
+          "y": 299,
           "mx": 465,
           "my": 513,
           "mw": 289
@@ -29,8 +29,8 @@
         {
           "src": "WORKimages/2024_Marlborough_Road_3.jpg",
           "width": 146,
-          "x": 1547,
-          "y": 261,
+          "x": 1454,
+          "y": 347,
           "mx": 561,
           "my": 643,
           "mw": 244
@@ -47,8 +47,8 @@
         {
           "src": "WORKimages/2024_Marlborough_Road_5.jpg",
           "width": 159,
-          "x": 1345,
-          "y": 395,
+          "x": 1297,
+          "y": 419,
           "mx": 796,
           "my": 403,
           "mw": 233
@@ -263,8 +263,8 @@
         {
           "src": "WORKimages/2024_Fishy_2.jpg",
           "width": 148,
-          "x": 2695,
-          "y": 2374,
+          "x": 2612,
+          "y": 2350,
           "mx": 1233,
           "my": 1949,
           "mw": 206
@@ -326,8 +326,8 @@
         {
           "src": "WORKimages/2025_ScreenShotThis_1.jpg",
           "width": 154,
-          "x": 4453,
-          "y": 1601,
+          "x": 4432,
+          "y": 1604,
           "mx": 1614,
           "my": 1370,
           "mw": 231
@@ -434,8 +434,8 @@
         {
           "src": "WORKimages/2025_Birthlook_2.jpeg",
           "width": 164,
-          "x": 3534,
-          "y": 1212,
+          "x": 3555,
+          "y": 1319,
           "mx": 1501,
           "my": 1078,
           "mw": 228
@@ -509,7 +509,7 @@
         "Together I bring them into this fragile object that gets reshaped and reformed by every single flip.",
         "Book launch event at Waste Store London, 10th Dec, 2024"
       ],
-      "maxWidth": 500,
+      "maxWidth": 480,
       "align": "center",
       "lineHeight": 0.8,
       "x": 3649,
