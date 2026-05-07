@@ -4,7 +4,7 @@ document.documentElement.style.visibility = 'hidden';
 
 const LANDING_ITEM_ID = '013';
 
-// Declared early so _mirrorLoop IIFE can read it before the zoom block below.
+// Declared early so _syncOverlayBtns can read it before the zoom block below.
 let _currentScale = 1;
 
 const _manuallyPaused = new WeakSet();
@@ -20,6 +20,7 @@ const scrollWrap = document.createElement('div');
 scrollWrap.id = 'scroll-wrap';
 document.body.insertBefore(scrollWrap, stage);
 scrollWrap.appendChild(stage);
+scrollWrap.addEventListener('scroll', _syncOverlayBtns, { passive: true });
 
 const spacer = document.createElement('div');
 spacer.id = 'scroll-spacer';
@@ -77,7 +78,7 @@ Object.assign(_btnOverlay.style, {
 });
 document.body.appendChild(_btnOverlay);
 
-(function _mirrorLoop() {
+function _syncOverlayBtns() {
   const sl = scrollWrap.scrollLeft;
   const st = scrollWrap.scrollTop;
   const z  = _currentScale;
@@ -87,8 +88,7 @@ document.body.appendChild(_btnOverlay);
     btn.style.top      = Math.round(btn._absY * z - st) + 'px';
     btn.style.fontSize = Math.round(10 * z) + 'px';
   }
-  requestAnimationFrame(_mirrorLoop);
-})();
+}
 
 // ── Frost canvas ──────────────────────────────────────────────────────────────
 // layer1        — sharp images on #f0eeeb
@@ -180,29 +180,55 @@ function buildImageCache(eW, eH) {
     const isVideo = /\.(mp4|mov|webm|ogg)$/i.test(src);
 
     if (isVideo) {
-      // Draw current video frame; video is already playing so a frame is ready.
-      const drawH = (l1El.videoHeight > 0)
-        ? l1El.videoHeight * (width / l1El.videoWidth)
-        : width * 0.75;
-      ctx.drawImage(l1El,
-        x * MEM_SCALE, y * MEM_SCALE,
-        width * MEM_SCALE, drawH * MEM_SCALE);
-      if (--pending === 0) { drawTextsIntoCache(); imageCache = temp; }
-    } else {
-      const img  = new Image();
-      const done = () => {
-        if (img.naturalWidth > 0) {
-          const ih = img.naturalHeight * (width / img.naturalWidth);
-          ctx.drawImage(img,
-            x * MEM_SCALE, y * MEM_SCALE,
-            width * MEM_SCALE, ih * MEM_SCALE);
-        }
+      if (l1El.poster) {
+        // Video has a poster — draw the JPEG instead of the video frame.
+        const pImg = new Image();
+        const done = () => {
+          if (pImg.naturalWidth > 0) {
+            const drawH = pImg.naturalHeight * (width / pImg.naturalWidth);
+            ctx.drawImage(pImg,
+              x * MEM_SCALE, y * MEM_SCALE,
+              width * MEM_SCALE, drawH * MEM_SCALE);
+          }
+          if (--pending === 0) { drawTextsIntoCache(); imageCache = temp; }
+        };
+        pImg.onload  = done;
+        pImg.onerror = done;
+        pImg.src     = l1El.poster;
+        if (pImg.complete) { pImg.onload = null; pImg.onerror = null; done(); }
+      } else {
+        // Draw current video frame; video is already playing so a frame is ready.
+        const drawH = (l1El.videoHeight > 0)
+          ? l1El.videoHeight * (width / l1El.videoWidth)
+          : width * 0.75;
+        ctx.drawImage(l1El,
+          x * MEM_SCALE, y * MEM_SCALE,
+          width * MEM_SCALE, drawH * MEM_SCALE);
         if (--pending === 0) { drawTextsIntoCache(); imageCache = temp; }
-      };
-      img.onload  = done;
-      img.onerror = done;
-      img.src     = src;
-      if (img.complete) { img.onload = null; img.onerror = null; done(); }
+      }
+    } else {
+      if (l1El.complete && l1El.naturalWidth > 0) {
+        const ih = l1El.naturalHeight * (width / l1El.naturalWidth);
+        ctx.drawImage(l1El,
+          x * MEM_SCALE, y * MEM_SCALE,
+          width * MEM_SCALE, ih * MEM_SCALE);
+        if (--pending === 0) { drawTextsIntoCache(); imageCache = temp; }
+      } else {
+        const img  = new Image();
+        const done = () => {
+          if (img.naturalWidth > 0) {
+            const ih = img.naturalHeight * (width / img.naturalWidth);
+            ctx.drawImage(img,
+              x * MEM_SCALE, y * MEM_SCALE,
+              width * MEM_SCALE, ih * MEM_SCALE);
+          }
+          if (--pending === 0) { drawTextsIntoCache(); imageCache = temp; }
+        };
+        img.onload  = done;
+        img.onerror = done;
+        img.src     = src;
+        if (img.complete) { img.onload = null; img.onerror = null; done(); }
+      }
     }
   });
 }
@@ -474,6 +500,7 @@ function waitResolveAndCache() {
     }
     _pageReady = true;
     _btnOverlay.style.visibility = '';
+    _syncOverlayBtns();
     if (IS_MOBILE && figW > 0) mob_initPosition();
   }
 
@@ -531,6 +558,7 @@ function drawFrost() {
   for (const p of allPlaced) {
     if (!(p.l1El instanceof HTMLVideoElement)) continue;
     if (p.l1El.readyState < 2) continue;  // no frame available yet
+    if (p.l1El.paused && p.l1El.poster) continue;  // poster video paused — imageCache has the right image
     const x = parseFloat(p.l1El.style.left);
     const y = parseFloat(p.l1El.style.top);
     const drawW = p.width * MEM_SCALE;
@@ -704,8 +732,13 @@ function placeItem(item) {
     if (isVideo) {
       l1El.src     = src;
       l1El.preload = 'metadata';
-      if (src === 'WORKimages/2025_BirthLookReveal.mp4') {
-        /** @type {HTMLVideoElement} */ (l1El).poster = 'WORKimages/2025_Birthlook_3.jpeg';
+      const _posterMap = {
+        'WORKimages/2025_BirthLookReveal.mp4':  'WORKimages/2025_Birthlook_3.jpeg',
+        'WORKimages/2024_Communistagram.mp4':   'WORKimages/2024_Communistagram.jpeg',
+        'WORKimages/2025_Chanel_window.mp4':    'WORKimages/2025_Chanel_Window.jpeg',
+      };
+      if (_posterMap[src]) {
+        /** @type {HTMLVideoElement} */ (l1El).poster = _posterMap[src];
       }
       if (IS_MOBILE) {
         l1El.addEventListener('loadeddata', () => {
@@ -715,6 +748,9 @@ function placeItem(item) {
       }
     }
     const riEl = makeEl();
+    if (isVideo && /** @type {HTMLVideoElement} */ (l1El).poster) {
+      /** @type {HTMLVideoElement} */ (riEl).poster = /** @type {HTMLVideoElement} */ (l1El).poster;
+    }
     if (!isVideo) l1El._riEl = riEl;
     _pendingL1.appendChild(l1El);
     _pendingRI.appendChild(riEl);
@@ -2174,7 +2210,7 @@ if ('ontouchstart' in window) {
 
 // ── ZOOM (non-Safari only) ────────────────────────────────────────────────────
 // ── ZOOM (transform scale, all browsers) ─────────────────────────────────────
-// _currentScale declared at top of file so _mirrorLoop IIFE can access it.
+// _currentScale declared at top of file so _syncOverlayBtns can access it.
 let _lastMouseX = window.innerWidth / 2;
 let _lastMouseY = window.innerHeight / 2;
 
@@ -2203,6 +2239,7 @@ function applyScale(newScale, stageX, stageY) {
   scrollWrap.scrollLeft = newScrollLeft;
   scrollWrap.scrollTop  = newScrollTop;
   if (typeof _updateScaleBar === 'function') _updateScaleBar();
+  _syncOverlayBtns();
 }
 
 // Block native browser pinch/ctrl-scroll zoom on all browsers.
