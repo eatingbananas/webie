@@ -751,6 +751,11 @@ function placeItem(item) {
         l1El.play().catch(() => {});
         riEl.play().catch(() => {});
         riEl.addEventListener('loadeddata', () => { riEl.currentTime = l1El.currentTime; }, { once: true });
+        l1El.addEventListener('timeupdate', () => {
+          if (Math.abs(l1El.currentTime - riEl.currentTime) > 0.3) {
+            riEl.currentTime = l1El.currentTime;
+          }
+        });
       }, IS_MOBILE ? { rootMargin: '400px' } : { root: scrollWrap, rootMargin: '200px' });
       videoObserver.observe(l1El);
     }
