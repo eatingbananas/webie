@@ -400,7 +400,7 @@ function waitResolveAndCache() {
   let pending = imgs.length;
 
   function finish() {
-    if (!IS_MOBILE) resolveProjectOverlaps();
+    // resolveProjectOverlaps disabled — intentional overlaps allowed
 
     // ── Compute bounding box of all placed images ────────────────────────────
     let bx1 = -Infinity, by1 = -Infinity;
@@ -758,8 +758,8 @@ function placeItem(item) {
     allPlaced.push(placedEntry);
 
     // Images that navigate to their project cluster when clicked.
-    if (src.endsWith('ScreenShotThis_2.jpg') || src.endsWith('Birthlook_3.jpeg')) {
-      l1El.style.cursor = 'pointer';
+    if (src.endsWith('ScreenShotThis_2.jpg') || src.endsWith('Birthlook_3.jpeg') || src.endsWith('Jake_Zhang_5.jpg')) {
+      l1El.dataset.clicknav = '1';
       const _navSrc    = src;
       const _navItemId = item.id;
       l1El.addEventListener('click', () => navigateToProject(_navItemId, _navSrc));
@@ -1089,8 +1089,8 @@ function placeItem(item) {
 
 // ── UpdateLog scatter layer ───────────────────────────────────────────────────
 // Zone centre where update entries are scattered (desktop surface coords).
-const UL_ZONE_X = 3600;
-const UL_ZONE_Y = 2700;
+const UL_ZONE_X = 4830;
+const UL_ZONE_Y = 1284;
 
 function placeUpdateLog(entries) {
   if (!entries || entries.length === 0) return;
@@ -1556,35 +1556,9 @@ function navigateToProject(itemId, excludeSrc) {
 
   const cx = (minX + maxX) / 2;
   const cy = (minY + maxY) / 2;
-  const targetScale      = Math.max(1, _currentScale);
-  const targetScrollLeft = cx * targetScale - scrollWrap.clientWidth  / 2;
-  const targetScrollTop  = cy * targetScale - scrollWrap.clientHeight / 2;
-
-  if (_currentScale >= 1) {
-    scrollWrap.scrollTo({ left: targetScrollLeft, top: targetScrollTop, behavior: 'smooth' });
-    return;
-  }
-
-  const DURATION        = 1500;
-  const startScale      = _currentScale;
-  const startScrollLeft = scrollWrap.scrollLeft;
-  const startScrollTop  = scrollWrap.scrollTop;
-  const startTime       = performance.now();
-
-  function easeInOut(t) { return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t; }
-  function animFrame(now) {
-    const raw = Math.min(1, (now - startTime) / DURATION);
-    const t   = easeInOut(raw);
-    _currentScale = startScale + (targetScale - startScale) * t;
-    stage.style.transformOrigin = '0 0';
-    stage.style.transform       = 'scale(' + _currentScale + ')';
-    updateSpacer();
-    scrollWrap.scrollLeft = startScrollLeft + (targetScrollLeft - startScrollLeft) * t;
-    scrollWrap.scrollTop  = startScrollTop  + (targetScrollTop  - startScrollTop)  * t;
-    if (typeof _updateScaleBar === 'function') _updateScaleBar();
-    if (raw < 1) requestAnimationFrame(animFrame);
-  }
-  requestAnimationFrame(animFrame);
+  const targetScrollLeft = cx * _currentScale - scrollWrap.clientWidth  / 2;
+  const targetScrollTop  = cy * _currentScale - scrollWrap.clientHeight / 2;
+  scrollWrap.scrollTo({ left: targetScrollLeft, top: targetScrollTop, behavior: 'smooth' });
 }
 
 // ── Contact overlay ───────────────────────────────────────────────────────────
@@ -2434,9 +2408,40 @@ if (!IS_MOBILE) {
   let _dragScrollLeft = 0;
   let _dragScrollTop  = 0;
 
+  function _stageCoords(e) {
+    const rect = scrollWrap.getBoundingClientRect();
+    return {
+      x: (e.clientX - rect.left + scrollWrap.scrollLeft) / _currentScale,
+      y: (e.clientY - rect.top  + scrollWrap.scrollTop)  / _currentScale,
+    };
+  }
+
+  function _navImgAt(stageX, stageY) {
+    const navImgs = Array.from(layer1.querySelectorAll('img[data-clicknav]'));
+    for (const el of navImgs) {
+      const ix = parseFloat(el.style.left);
+      const iy = parseFloat(el.style.top);
+      const iw = el.offsetWidth  || parseFloat(el.style.width) || 80;
+      const ih = el.offsetHeight || Math.round(iw * 1.3);
+      if (stageX >= ix && stageX <= ix + iw && stageY >= iy && stageY <= iy + ih) return el;
+    }
+    return null;
+  }
+
+  scrollWrap.addEventListener('mousemove', e => {
+    if (_dragging) return;
+    const { x, y } = _stageCoords(e);
+    scrollWrap.style.cursor = _navImgAt(x, y) ? 'pointer' : 'grab';
+  });
+
+  let _dragMoved = false;
+
   scrollWrap.addEventListener('mousedown', e => {
     if (e.button !== 0) return;
+    _dragMoved = false;
     if (e.target.closest('button, a, input, video, select, textarea')) return;
+    const { x, y } = _stageCoords(e);
+    if (_navImgAt(x, y)) return;
     _dragging       = true;
     document.body.style.userSelect = 'none';
     document.body.style.WebkitUserSelect = 'none';
@@ -2447,9 +2452,19 @@ if (!IS_MOBILE) {
     scrollWrap.style.cursor = 'grabbing';
   });
 
+  scrollWrap.addEventListener('click', e => {
+    if (_dragMoved) return;
+    const { x, y } = _stageCoords(e);
+    const el = _navImgAt(x, y);
+    if (!el) return;
+    const entry = allPlaced.find(p => p.l1El === el);
+    if (entry) navigateToProject(entry.itemId, entry.src);
+  });
+
   window.addEventListener('mousemove', e => {
     if (!_dragging) return;
     e.preventDefault();
+    _dragMoved = true;
     scrollWrap.scrollLeft = _dragScrollLeft - (e.clientX - _dragStartX);
     scrollWrap.scrollTop  = _dragScrollTop  - (e.clientY - _dragStartY);
   });
