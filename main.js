@@ -390,25 +390,6 @@ function resolveProjectOverlaps() {
     lb.el.style.top  = Math.round(parseFloat(lb.el.style.top)  + d.dy) + 'px';
   }
 
-  // Clamp: ensure no image is above 80px from surface top or left of 80px.
-  const TOP_PAD  = 80;
-  const LEFT_PAD = 80;
-  let minY = Infinity, minX = Infinity;
-  for (const p of allPlaced) {
-    minY = Math.min(minY, parseFloat(p.l1El.style.top));
-    minX = Math.min(minX, parseFloat(p.l1El.style.left));
-  }
-  const clampDY = minY < TOP_PAD  ? TOP_PAD  - minY : 0;
-  const clampDX = minX < LEFT_PAD ? LEFT_PAD - minX : 0;
-  if (clampDY !== 0 || clampDX !== 0) {
-    for (const p of allPlaced) {
-      moveImage(p, clampDX, clampDY);
-    }
-    for (const lb of allLabels) {
-      lb.el.style.left = Math.round(parseFloat(lb.el.style.left) + clampDX) + 'px';
-      lb.el.style.top  = Math.round(parseFloat(lb.el.style.top)  + clampDY) + 'px';
-    }
-  }
 }
 
 // Wait for all layer1 images to load, resolve collisions, resize the surface to
@@ -421,20 +402,18 @@ function waitResolveAndCache() {
     if (!IS_MOBILE) resolveProjectOverlaps();
 
     // ── Compute bounding box of all placed images ────────────────────────────
-    const SURFACE_PAD = 400;
-    let bx0 = Infinity, by0 = Infinity, bx1 = -Infinity, by1 = -Infinity;
+    let bx1 = -Infinity, by1 = -Infinity;
     for (const p of allPlaced) {
       const x = parseFloat(p.l1El.style.left);
       const y = parseFloat(p.l1El.style.top);
       const w = p.l1El.offsetWidth  || p.width;
       const h = p.l1El.offsetHeight || Math.round(p.width * 1.3);
-      bx0 = Math.min(bx0, x);       by0 = Math.min(by0, y);
       bx1 = Math.max(bx1, x + w);   by1 = Math.max(by1, y + h);
     }
-    if (!isFinite(bx0)) { bx0 = 0; by0 = 0; bx1 = 800; by1 = 600; }
+    if (!isFinite(bx1)) { bx1 = 800; by1 = 600; }
 
-    surfW = Math.round(bx1 - bx0 + SURFACE_PAD * 2);
-    surfH = Math.round(by1 - by0 + SURFACE_PAD * 2);
+    surfW = Math.round(bx1);
+    surfH = Math.round(by1);
 
     // Clamp current scale to new minimum now that surfW/surfH are finalised.
     const minAfterResize = getMinScale();
@@ -1254,7 +1233,8 @@ fetch('content.json')
     Promise.all([
       fetch('DUMPimages/manifest.json').then(r => r.ok ? r.json() : []).catch(() => []),
       fetch('DUMPimages/mobile_positions.json').then(r => r.ok ? r.json() : {}).catch(() => ({})),
-    ]).then(([files, mobPos]) => {
+      fetch('DUMPimages/desktop_positions.json').then(r => r.ok ? r.json() : {}).catch(() => ({})),
+    ]).then(([files, mobPos, deskPos]) => {
         const imgExts = /\.(jpe?g|png|gif|webp|svg)$/i;
         const txtExts = /\.txt$/i;
         const imgFiles = files.filter(f => imgExts.test(f));
@@ -1276,10 +1256,14 @@ fetch('content.json')
           const seed  = strToSeed('dump_' + filename);
           const rand  = makeRand(seed);
           const wBase = Math.round(rand(120, 240));
-          const w     = IS_MOBILE ? Math.round(wBase * MOB_IMG_SCALE) : wBase;
+          let w       = IS_MOBILE ? Math.round(wBase * MOB_IMG_SCALE) : wBase;
           const pad   = 60;
           let x, y;
-          if (IS_MOBILE && mobPos[filename]) {
+          if (!IS_MOBILE && deskPos[filename]) {
+            x = deskPos[filename].x;
+            y = deskPos[filename].y;
+            if (deskPos[filename].width) w = deskPos[filename].width;
+          } else if (IS_MOBILE && mobPos[filename]) {
             x = mobPos[filename].mx;
             y = mobPos[filename].my;
           } else if (IS_MOBILE) {
@@ -1504,6 +1488,12 @@ function hideReveal() {
 
 initCursor();
 requestAnimationFrame(restoreLoop);
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) {
+    rebuildErosion(performance.now());
+    drawFrost();
+  }
+});
 
 // ── Video autoplay fallback ───────────────────────────────────────────────────
 // Safari blocks autoplay until a user gesture. On each interaction, attempt
@@ -2406,3 +2396,141 @@ if (!IS_MOBILE) {
   });
 }
 // ── END Desktop drag-to-pan ───────────────────────────────────────────────────
+
+// ── Preview / Design mode ─────────────────────────────────────────────────────
+// Press P to toggle. While active: all placed images are draggable and
+// have a resize handle. Press P or C to exit — positions are logged to
+// console as JSON keyed by src path, ready to copy into content.json.
+(function () {
+  let _previewActive = false;
+  const _cleanup = [];
+
+  function _enter() {
+    _previewActive = true;
+
+    const indicator = document.createElement('div');
+    Object.assign(indicator.style, {
+      position:      'fixed',
+      top:           '10px',
+      right:         '40px',
+      zIndex:        '9999',
+      fontFamily:    '"Lucida Grande", Arial, sans-serif',
+      fontSize:      '11px',
+      color:         '#555',
+      background:    'rgba(255,255,160,0.9)',
+      padding:       '2px 8px',
+      borderRadius:  '3px',
+      pointerEvents: 'none',
+      userSelect:    'none',
+    });
+    indicator.textContent = 'PREVIEW  —  P or C to exit + log';
+    document.body.appendChild(indicator);
+    _cleanup.push(() => indicator.remove());
+
+    frostCanvas.style.display = 'none';
+    _cleanup.push(() => { frostCanvas.style.display = ''; });
+
+    allPlaced.forEach(({ l1El, riEl }) => {
+      const getW = () => Math.round(parseFloat(l1El.style.width) || 100);
+      const getH = () => l1El.offsetHeight || Math.round(getW() * 0.75);
+
+      const overlay = document.createElement('div');
+      Object.assign(overlay.style, {
+        position:  'absolute',
+        zIndex:    '50',
+        boxSizing: 'border-box',
+        border:    '1px dashed rgba(100,100,100,0.4)',
+        cursor:    'move',
+      });
+
+      function syncOverlay() {
+        overlay.style.left   = l1El.style.left;
+        overlay.style.top    = l1El.style.top;
+        overlay.style.width  = getW() + 'px';
+        overlay.style.height = getH() + 'px';
+      }
+      syncOverlay();
+      layer1.appendChild(overlay);
+      _cleanup.push(() => overlay.remove());
+
+      const rz = document.createElement('div');
+      Object.assign(rz.style, {
+        position:   'absolute',
+        right:      '0',
+        bottom:     '0',
+        width:      '10px',
+        height:     '10px',
+        background: 'rgba(80,80,80,0.55)',
+        cursor:     'se-resize',
+      });
+      overlay.appendChild(rz);
+
+      // Drag
+      overlay.addEventListener('mousedown', e => {
+        if (e.target === rz) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const sx = e.clientX, sy = e.clientY;
+        const ox = parseFloat(l1El.style.left), oy = parseFloat(l1El.style.top);
+        const onMove = e2 => {
+          const nx = Math.round(ox + (e2.clientX - sx) / _currentScale);
+          const ny = Math.round(oy + (e2.clientY - sy) / _currentScale);
+          l1El.style.left = nx + 'px'; l1El.style.top = ny + 'px';
+          if (riEl) { riEl.style.left = nx + 'px'; riEl.style.top = ny + 'px'; }
+          syncOverlay();
+        };
+        const onUp = () => {
+          window.removeEventListener('mousemove', onMove);
+          window.removeEventListener('mouseup',   onUp);
+        };
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('mouseup',   onUp);
+      });
+
+      // Resize
+      rz.addEventListener('mousedown', e => {
+        e.preventDefault();
+        e.stopPropagation();
+        const sx = e.clientX, ow = getW();
+        const onMove = e2 => {
+          const nw = Math.max(20, Math.round(ow + (e2.clientX - sx) / _currentScale));
+          l1El.style.width = nw + 'px';
+          if (riEl) riEl.style.width = nw + 'px';
+          syncOverlay();
+        };
+        const onUp = () => {
+          window.removeEventListener('mousemove', onMove);
+          window.removeEventListener('mouseup',   onUp);
+        };
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('mouseup',   onUp);
+      });
+    });
+  }
+
+  function _log() {
+    const out = {};
+    allPlaced.forEach(({ l1El, src }) => {
+      out[src] = {
+        x:     Math.round(parseFloat(l1El.style.left)),
+        y:     Math.round(parseFloat(l1El.style.top)),
+        width: Math.round(parseFloat(l1El.style.width)),
+      };
+    });
+    console.log(JSON.stringify(out, null, 2));
+  }
+
+  function _exit() {
+    _previewActive = false;
+    _log();
+    _cleanup.forEach(fn => fn());
+    _cleanup.length = 0;
+  }
+
+  document.addEventListener('keydown', e => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    if (e.key === 'p' || e.key === 'P') { _previewActive ? _exit() : _enter(); }
+    else if ((e.key === 'c' || e.key === 'C') && _previewActive) { _exit(); }
+  });
+})();
+// ── END Preview / Design mode ─────────────────────────────────────────────────
