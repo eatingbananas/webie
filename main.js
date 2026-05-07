@@ -109,8 +109,9 @@ Object.assign(frostCanvas.style, {
 });
 stage.insertBefore(frostCanvas, layer2);
 
-let frostCtx   = null;
-let imageCache = null;
+let frostCtx    = null;
+let imageCache  = null;
+let _frostDirty = true;
 
 // ── Erosion: time-based point list ───────────────────────────────────────────
 const erosionPoints = [];
@@ -554,9 +555,24 @@ function drawFrost() {
 function restoreLoop(now) {
   while (erosionPoints.length > 0 && now - erosionPoints[0].addedAt >= DECAY_MS) {
     erosionPoints.shift();
+    _frostDirty = true;
+  }
+  // Playing video frames are always changing — mark dirty so frost stays in sync.
+  if (!_frostDirty) {
+    for (const p of allPlaced) {
+      if (p.l1El instanceof HTMLVideoElement && p.l1El.readyState >= 2 && !p.l1El.paused) {
+        _frostDirty = true;
+        break;
+      }
+    }
+  }
+  if (IS_MOBILE && !_frostDirty) {
+    requestAnimationFrame(restoreLoop);
+    return;
   }
   rebuildErosion(now);
   drawFrost();
+  _frostDirty = false;
   requestAnimationFrame(restoreLoop);
 }
 
@@ -571,6 +587,7 @@ function applyMemory(sx, sy) {
     r:       MEM_RADIUS * MEM_SCALE,
     addedAt: performance.now(),
   });
+  _frostDirty = true;
 }
 
 // ── Seeded RNG (xorshift32) ───────────────────────────────────────────────────
@@ -792,6 +809,7 @@ function placeItem(item) {
         _viewTimeout = null;
         if (_viewRect) { viewRects.delete(_viewRect); _viewRect = null; }
         viewBtn.textContent = 'view';
+        _frostDirty = true;
       }
 
       viewBtn.addEventListener('click', () => {
@@ -804,6 +822,7 @@ function placeItem(item) {
           : Math.round(width * 0.75);
         _viewRect = { x: liveX, y: liveY, w: width, h: vidH };
         viewRects.add(_viewRect);
+        _frostDirty = true;
         const dur = (l1El.duration && isFinite(l1El.duration))
           ? l1El.duration * 1000 : 5000;
         _viewTimeout = setTimeout(stopView, dur);
@@ -1003,6 +1022,7 @@ function placeItem(item) {
         viewRects.delete(_readRect);
         _readRect = null;
         readBtn.textContent = 'read';
+        _frostDirty = true;
         return;
       }
 
@@ -1017,12 +1037,14 @@ function placeItem(item) {
       _readRect = { x: tx, y: ty, w: tw, h: th };
       viewRects.add(_readRect);
       readBtn.textContent = 'close';
+      _frostDirty = true;
 
       _readTimeout = setTimeout(() => {
         viewRects.delete(_readRect);
         _readRect = null;
         _readTimeout = null;
         readBtn.textContent = 'read';
+        _frostDirty = true;
       }, 12000);
     });
 
