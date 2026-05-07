@@ -299,8 +299,8 @@ function drawTextsIntoFrost() {
 // buildImageCache is called afterwards so the frost layer matches.
 
 function resolveProjectOverlaps() {
-  const SAME_GAP  = 30;   // minimum gap between images in the same project
-  const CROSS_GAP = 200;  // minimum gap between images from different projects
+  const SAME_GAP  = 0;
+  const CROSS_GAP = 0;
   const EXEMPT_TYPES = new Set(['loose', 'found']);
 
   // Build a lookup of itemId → item type from allPlaced (type stored on element)
@@ -352,6 +352,7 @@ function resolveProjectOverlaps() {
       for (let j = i + 1; j < allPlaced.length; j++) {
         const pA = allPlaced[i];
         const pB = allPlaced[j];
+        if (pA.itemId.startsWith('dump_') || pB.itemId.startsWith('dump_')) continue;
         const pad = getPad(pA, pB);
         const a = getRect(pA);
         const b = getRect(pB);
@@ -755,6 +756,14 @@ function placeItem(item) {
     }
     const placedEntry = { src, x, y, width, itemId: item.id, itemType: item.type || '', l1El, riEl, btns: [], timelineEl: null };
     allPlaced.push(placedEntry);
+
+    // Images that navigate to their project cluster when clicked.
+    if (src.endsWith('ScreenShotThis_2.jpg') || src.endsWith('Birthlook_3.jpeg')) {
+      l1El.style.cursor = 'pointer';
+      const _navSrc    = src;
+      const _navItemId = item.id;
+      l1El.addEventListener('click', () => navigateToProject(_navItemId, _navSrc));
+    }
 
     // For videos: always-visible text buttons at random position + timeline at bottom.
     if (isVideo) {
@@ -1188,7 +1197,12 @@ fetch('content.json')
     stage.style.visibility = '';
     document.documentElement.style.visibility = 'visible';
     updateSpacer();
-    { const _lp = _landingPos(); scrollWrap.scrollLeft = _lp.left; scrollWrap.scrollTop = _lp.top; }
+    if (IS_MOBILE) {
+      const _lp = _landingPos(); scrollWrap.scrollLeft = _lp.left; scrollWrap.scrollTop = _lp.top;
+    } else {
+      scrollWrap.scrollLeft = surfW / 2 * _currentScale - scrollWrap.clientWidth  / 2;
+      scrollWrap.scrollTop  = surfH / 2 * _currentScale - scrollWrap.clientHeight / 2;
+    }
     _loadingEl.remove();
     _spinStyle.remove();
 
@@ -1346,7 +1360,12 @@ fetch('content.json')
 
         Promise.all([...txtPromises, ulPromise]).then(() => {
           // Pre-position scroll before elements appear so there's no visible jump.
-          { const _lp = _landingPos(); scrollWrap.scrollLeft = _lp.left; scrollWrap.scrollTop = _lp.top; }
+          if (IS_MOBILE) {
+            const _lp = _landingPos(); scrollWrap.scrollLeft = _lp.left; scrollWrap.scrollTop = _lp.top;
+          } else {
+            scrollWrap.scrollLeft = surfW / 2 * _currentScale - scrollWrap.clientWidth  / 2;
+            scrollWrap.scrollTop  = surfH / 2 * _currentScale - scrollWrap.clientHeight / 2;
+          }
           // Flush all layer1/revealInner elements at once — final positions already set.
           layer1.appendChild(_pendingL1);
           revealInner.appendChild(_pendingRI);
@@ -1519,6 +1538,54 @@ function registerVideoPlayListeners() {
 }
 
 if (!IS_MOBILE) registerVideoPlayListeners();
+
+// ── Navigate to project cluster ───────────────────────────────────────────────
+function navigateToProject(itemId, excludeSrc) {
+  const entries = allPlaced.filter(p => p.itemId === itemId && p.src !== excludeSrc);
+  if (!entries.length) return;
+
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const p of entries) {
+    const px = parseFloat(p.l1El.style.left);
+    const py = parseFloat(p.l1El.style.top);
+    const pw = p.l1El.offsetWidth  || p.width;
+    const ph = p.l1El.offsetHeight || Math.round(p.width * 1.3);
+    minX = Math.min(minX, px);      minY = Math.min(minY, py);
+    maxX = Math.max(maxX, px + pw); maxY = Math.max(maxY, py + ph);
+  }
+
+  const cx = (minX + maxX) / 2;
+  const cy = (minY + maxY) / 2;
+  const targetScale      = Math.max(1, _currentScale);
+  const targetScrollLeft = cx * targetScale - scrollWrap.clientWidth  / 2;
+  const targetScrollTop  = cy * targetScale - scrollWrap.clientHeight / 2;
+
+  if (_currentScale >= 1) {
+    scrollWrap.scrollTo({ left: targetScrollLeft, top: targetScrollTop, behavior: 'smooth' });
+    return;
+  }
+
+  const DURATION        = 1500;
+  const startScale      = _currentScale;
+  const startScrollLeft = scrollWrap.scrollLeft;
+  const startScrollTop  = scrollWrap.scrollTop;
+  const startTime       = performance.now();
+
+  function easeInOut(t) { return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t; }
+  function animFrame(now) {
+    const raw = Math.min(1, (now - startTime) / DURATION);
+    const t   = easeInOut(raw);
+    _currentScale = startScale + (targetScale - startScale) * t;
+    stage.style.transformOrigin = '0 0';
+    stage.style.transform       = 'scale(' + _currentScale + ')';
+    updateSpacer();
+    scrollWrap.scrollLeft = startScrollLeft + (targetScrollLeft - startScrollLeft) * t;
+    scrollWrap.scrollTop  = startScrollTop  + (targetScrollTop  - startScrollTop)  * t;
+    if (typeof _updateScaleBar === 'function') _updateScaleBar();
+    if (raw < 1) requestAnimationFrame(animFrame);
+  }
+  requestAnimationFrame(animFrame);
+}
 
 // ── Contact overlay ───────────────────────────────────────────────────────────
 const contactDiv = document.createElement('div');
@@ -2430,6 +2497,47 @@ if (!IS_MOBILE) {
     frostCanvas.style.display = 'none';
     _cleanup.push(() => { frostCanvas.style.display = ''; });
 
+    allTexts.forEach(({ el }) => {
+      const overlay = document.createElement('div');
+      Object.assign(overlay.style, {
+        position:  'absolute',
+        zIndex:    '51',
+        boxSizing: 'border-box',
+        border:    '1px dashed rgba(100,100,200,0.5)',
+        cursor:    'move',
+        minWidth:  '10px',
+        minHeight: '10px',
+      });
+      function syncTextOverlay() {
+        overlay.style.left   = el.style.left;
+        overlay.style.top    = el.style.top;
+        overlay.style.width  = (el.offsetWidth  || 60) + 'px';
+        overlay.style.height = (el.offsetHeight || 20) + 'px';
+      }
+      syncTextOverlay();
+      layer1.appendChild(overlay);
+      _cleanup.push(() => overlay.remove());
+
+      overlay.addEventListener('mousedown', e => {
+        e.preventDefault();
+        e.stopPropagation();
+        const sx = e.clientX, sy = e.clientY;
+        const ox = parseFloat(el.style.left), oy = parseFloat(el.style.top);
+        const onMove = e2 => {
+          const nx = Math.round(ox + (e2.clientX - sx) / _currentScale);
+          const ny = Math.round(oy + (e2.clientY - sy) / _currentScale);
+          el.style.left = nx + 'px'; el.style.top = ny + 'px';
+          syncTextOverlay();
+        };
+        const onUp = () => {
+          window.removeEventListener('mousemove', onMove);
+          window.removeEventListener('mouseup',   onUp);
+        };
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('mouseup',   onUp);
+      });
+    });
+
     allPlaced.forEach(({ l1El, riEl }) => {
       const getW = () => Math.round(parseFloat(l1El.style.width) || 100);
       const getH = () => l1El.offsetHeight || Math.round(getW() * 0.75);
@@ -2518,6 +2626,14 @@ if (!IS_MOBILE) {
       };
     });
     console.log(JSON.stringify(out, null, 2));
+    const textOut = {};
+    allTexts.forEach(({ el, textId }) => {
+      textOut[textId] = {
+        x: Math.round(parseFloat(el.style.left)),
+        y: Math.round(parseFloat(el.style.top)),
+      };
+    });
+    console.log('texts:', JSON.stringify(textOut, null, 2));
   }
 
   function _exit() {
