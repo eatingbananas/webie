@@ -11,47 +11,47 @@
         {
           "src": "WORKimages/2024_Marlborough_Road_1.jpg",
           "width": 279,
-          "x": 1036,
+          "x": 1061,
           "y": 188,
           "mx": 236,
           "my": 555,
-          "mw": 167
+          "mw": 333
         },
         {
           "src": "WORKimages/2024_Marlborough_Road_2.jpg",
           "width": 208,
-          "x": 822,
-          "y": 299,
-          "mx": 466,
-          "my": 549,
-          "mw": 145
+          "x": 850,
+          "y": 322,
+          "mx": 465,
+          "my": 513,
+          "mw": 289
         },
         {
           "src": "WORKimages/2024_Marlborough_Road_3.jpg",
-          "width": 146,
-          "x": 1454,
-          "y": 347,
+          "width": 230,
+          "x": 1490,
+          "y": 261,
           "mx": 561,
           "my": 643,
-          "mw": 122
+          "mw": 244
         },
         {
           "src": "WORKimages/2024_Marlborough_Road_4.jpg",
-          "width": 226,
-          "x": 854,
-          "y": 596,
-          "mx": 412,
-          "my": 746,
-          "mw": 134
+          "width": 192,
+          "x": 1198,
+          "y": 645,
+          "mx": 463,
+          "my": 771,
+          "mw": 267
         },
         {
           "src": "WORKimages/2024_Marlborough_Road_5.jpg",
-          "width": 159,
-          "x": 1297,
-          "y": 419,
-          "mx": 731,
-          "my": 374,
-          "mw": 94
+          "width": 168,
+          "x": 1324,
+          "y": 406,
+          "mx": 796,
+          "my": 403,
+          "mw": 233
         }
       ],
       "text": "Marlborough Road, 2024"
@@ -65,56 +65,56 @@
         {
           "src": "WORKimages/2026_JakeZhang_1.jpg",
           "width": 384,
-          "x": 2316,
-          "y": 824,
+          "x": 2268,
+          "y": 1137,
           "mx": 880,
           "my": 1202,
-          "mw": 181
+          "mw": 361
         },
         {
           "src": "WORKimages/2026_JakeZhang_2.jpg",
           "width": 197,
-          "x": 2710,
-          "y": 735,
-          "mx": 1219,
-          "my": 1054,
-          "mw": 72
+          "x": 2467,
+          "y": 924,
+          "mx": 1087,
+          "my": 901,
+          "mw": 278
         },
         {
           "src": "WORKimages/2026_JakeZhang_3.jpg",
           "width": 89,
-          "x": 2226,
-          "y": 806,
-          "mx": 1013,
-          "my": 937,
-          "mw": 130
+          "x": 2228,
+          "y": 1050,
+          "mx": 929,
+          "my": 948,
+          "mw": 267
         },
         {
           "src": "WORKimages/2026_JakeZhang_4.jpg",
           "width": 184,
-          "x": 2131,
-          "y": 882,
+          "x": 2074,
+          "y": 1156,
           "mx": 701,
           "my": 1076,
-          "mw": 138
+          "mw": 275
         },
         {
           "src": "WORKimages/2026_Jake_Zhang_5.jpg",
           "width": 210,
-          "x": 1540,
-          "y": 1904,
+          "x": 2453,
+          "y": 1410,
           "mx": 1259,
           "my": 946,
-          "mw": 146
+          "mw": 292
         },
         {
           "src": "WORKimages/2026_Jake_Zhang_6.jpg",
           "width": 105,
-          "x": 2700,
-          "y": 924,
-          "mx": 1095,
-          "my": 1050,
-          "mw": 86
+          "x": 2651,
+          "y": 1108,
+          "mx": 1085,
+          "my": 1063,
+          "mw": 269
         }
       ],
       "text": "Jake Zhang, 2026"
@@ -130,9 +130,9 @@
           "width": 482,
           "x": 2262,
           "y": 16,
-          "mx": 1000,
-          "my": 395,
-          "mw": 255
+          "mx": 1148,
+          "my": 420,
+          "mw": 400
         }
       ],
       "text": null
@@ -146,11 +146,11 @@
         {
           "src": "WORKimages/2024_DaivasCraft_1.jpeg",
           "width": 659,
-          "x": 3662,
+          "x": 3628,
           "y": 178,
-          "mx": 1436,
-          "my": 215,
-          "mw": 328
+          "mx": 1489,
+          "my": 330,
+          "mw": 356
         }
       ],
       "text": "Daiva's Craft, 2024"
@@ -164,11 +164,11 @@
         {
           "src": "WORKimages/2024_Jack_bed_photo.webp",
           "width": 224,
-          "x": 4648,
-          "y": 129,
-          "mx": 1931,
-          "my": 278,
-          "mw": 140
+          "x": 4348,
+          "y": 212,
+          "mx": 1816,
+          "my": 424,
+          "mw": 311
         }
       ],
       "text": ""
@@ -184,18 +184,18 @@
           "width": 90,
           "x": 5157,
           "y": 1255,
-          "mx": 97,
-          "my": 2094,
-          "mw": 62
+          "mx": 221,
+          "my": 2299,
+          "mw": 300
         },
         {
           "src": "WORKimages/2025_JO_2.jpg",
           "width": 98,
           "x": 4668,
           "y": 1223,
-          "mx": 229,
-          "my": 2251,
-          "mw": 69
+          "mx": 422,
+          "my": 2274,
+          "mw": 256
         }
       ],
       "text": "JO, 2025"
@@ -209,11 +209,11 @@
         {
           "src": "WORKimages/2024_Body_Terrace.jpg",
           "width": 216,
-          "x": 3446,
-          "y": 493,
-          "mx": 1796,
-          "my": 591,
-          "mw": 150
+          "x": 3409,
+          "y": 510,
+          "mx": 1418,
+          "my": 532,
+          "mw": 300
         }
       ],
       "text": null
@@ -227,20 +227,20 @@
         {
           "src": "WORKimages/2024_Safety_1.jpg",
           "width": 413,
-          "x": 362,
+          "x": 385,
           "y": 1964,
           "mx": 586,
           "my": 1509,
-          "mw": 155
+          "mw": 310
         },
         {
           "src": "WORKimages/2024_Safety_2.jpg",
           "width": 135,
           "x": 429,
           "y": 1712,
-          "mx": 494,
-          "my": 1441,
-          "mw": 97
+          "mx": 721,
+          "my": 1386,
+          "mw": 292
         }
       ],
       "text": "Poppy Morgan's Safety Belts, 2024"
@@ -254,47 +254,47 @@
         {
           "src": "WORKimages/2024_Fishy_1.jpg",
           "width": 216,
-          "x": 2708,
-          "y": 1839,
+          "x": 2351,
+          "y": 1909,
           "mx": 1092,
-          "my": 1833,
-          "mw": 111
+          "my": 1863,
+          "mw": 222
         },
         {
           "src": "WORKimages/2024_Fishy_2.jpg",
           "width": 148,
-          "x": 2612,
-          "y": 2350,
-          "mx": 1184,
-          "my": 2153,
-          "mw": 103
+          "x": 2246,
+          "y": 2362,
+          "mx": 1233,
+          "my": 1949,
+          "mw": 206
         },
         {
           "src": "WORKimages/2024_Fishy_3.jpg",
           "width": 100,
-          "x": 2258,
-          "y": 2698,
+          "x": 2077,
+          "y": 2788,
           "mx": 1036,
           "my": 2096,
-          "mw": 106
+          "mw": 211
         },
         {
           "src": "WORKimages/2024_Fishy_4.jpg",
-          "width": 230,
-          "x": 2465,
-          "y": 2151,
-          "mx": 932,
-          "my": 2052,
-          "mw": 109
+          "width": 290,
+          "x": 2023,
+          "y": 2218,
+          "mx": 860,
+          "my": 1987,
+          "mw": 217
         },
         {
           "src": "WORKimages/2024_Fishy_5.jpg",
           "width": 148,
-          "x": 2348,
-          "y": 2458,
-          "mx": 1154,
-          "my": 2122,
-          "mw": 103
+          "x": 1930,
+          "y": 2589,
+          "mx": 1116,
+          "my": 2237,
+          "mw": 206
         }
       ],
       "text": "Fishy, 2024"
@@ -308,11 +308,11 @@
         {
           "src": "WORKimages/2023_Main_cut.jpg",
           "width": 498,
-          "x": 3185,
-          "y": 2889,
-          "mx": 504,
-          "my": 1136,
-          "mw": 208
+          "x": 3183,
+          "y": 2921,
+          "mx": 1794,
+          "my": 1537,
+          "mw": 356
         }
       ],
       "text": "Main Cuts, 2023"
@@ -326,29 +326,29 @@
         {
           "src": "WORKimages/2025_ScreenShotThis_1.jpg",
           "width": 154,
-          "x": 4432,
-          "y": 1604,
-          "mx": 1591,
-          "my": 1357,
-          "mw": 116
+          "x": 3379,
+          "y": 2022,
+          "mx": 1614,
+          "my": 1370,
+          "mw": 231
         },
         {
           "src": "WORKimages/2025_ScreenShotThis_2.jpg",
           "width": 80,
-          "x": 1632,
-          "y": 1411,
-          "mx": 1703,
-          "my": 1447,
-          "mw": 43
+          "x": 665,
+          "y": 1085,
+          "mx": 1382,
+          "my": 1468,
+          "mw": 218
         },
         {
           "src": "WORKimages/2025_ScreenShotThis_Gif.gif",
           "width": 239,
-          "x": 4184,
-          "y": 1543,
+          "x": 3148,
+          "y": 1821,
           "mx": 1496,
           "my": 1303,
-          "mw": 109
+          "mw": 218
         }
       ],
       "text": "Screen Shot This, 2025"
@@ -361,12 +361,12 @@
       "images": [
         {
           "src": "WORKimages/2026_Car_Nour.png",
-          "width": 289,
-          "x": 1862,
-          "y": 1482,
+          "width": 354,
+          "x": 1666,
+          "y": 1529,
           "mx": 1024,
           "my": 1520,
-          "mw": 166
+          "mw": 331
         }
       ],
       "text": "Car Nour, 2026"
@@ -380,11 +380,11 @@
         {
           "src": "WORKimages/2025_Chanel_window.mp4",
           "width": 381,
-          "x": 1112,
-          "y": 1327,
+          "x": 1508,
+          "y": 991,
           "mx": 815,
           "my": 710,
-          "mw": 167
+          "mw": 333
         }
       ],
       "text": "Chanel Window, 2025"
@@ -399,10 +399,10 @@
           "src": "WORKimages/2024_Communistagram.mp4",
           "width": 768,
           "x": 4236,
-          "y": 2321,
-          "mx": 325,
-          "my": 1726,
-          "mw": 334
+          "y": 2264,
+          "mx": 400,
+          "my": 1748,
+          "mw": 667
         }
       ],
       "text": "Communistagram, 2024"
@@ -416,38 +416,38 @@
         {
           "src": "WORKimages/2025_BirthLookReveal.mp4",
           "width": 400,
-          "x": 3064,
-          "y": 1275,
+          "x": 3100,
+          "y": 1259,
           "mx": 1595,
           "my": 801,
-          "mw": 278
+          "mw": 556
         },
         {
           "src": "WORKimages/2025_Birthlook_1.jpeg",
-          "width": 267,
-          "x": 3506,
-          "y": 1363,
+          "width": 308,
+          "x": 3537,
+          "y": 1436,
           "mx": 1303,
           "my": 735,
-          "mw": 111
+          "mw": 222
         },
         {
           "src": "WORKimages/2025_Birthlook_2.jpeg",
           "width": 164,
-          "x": 3555,
-          "y": 1319,
+          "x": 3498,
+          "y": 1304,
           "mx": 1501,
           "my": 1078,
-          "mw": 114
+          "mw": 228
         },
         {
           "src": "WORKimages/2025_Birthlook_3.jpeg",
           "width": 128,
-          "x": 1389,
-          "y": 2936,
-          "mx": 1810,
-          "my": 1271,
-          "mw": 89
+          "x": 1108,
+          "y": 2876,
+          "mx": 1692,
+          "my": 1069,
+          "mw": 178
         }
       ],
       "text": "Birthlook Reveal,2025"
@@ -461,29 +461,29 @@
         {
           "src": "WORKimages/2025_Ouyang_ss26_bts_hy-1.jpg",
           "width": 176,
-          "x": 232,
-          "y": 3394,
-          "mx": 1492,
-          "my": 2062,
-          "mw": 122
+          "x": 246,
+          "y": 3352,
+          "mx": 1516,
+          "my": 1930,
+          "mw": 244
         },
         {
           "src": "WORKimages/2025_Ouyang_ss26_bts_hy-2.jpg",
           "width": 168,
-          "x": 438,
-          "y": 3406,
-          "mx": 1624,
-          "my": 2133,
-          "mw": 117
+          "x": 424,
+          "y": 3364,
+          "mx": 1760,
+          "my": 1830,
+          "mw": 233
         },
         {
           "src": "WORKimages/2025_Ouyang_ss26_bts_hy-5.jpg",
           "width": 144,
           "x": -1,
-          "y": 3442,
-          "mx": 1557,
-          "my": 2201,
-          "mw": 100
+          "y": 3397,
+          "mx": 1635,
+          "my": 2069,
+          "mw": 200
         }
       ],
       "text": "Oscar Ouyang SS26 BTS for i-D, 2025",
@@ -509,13 +509,13 @@
         "Together I bring them into this fragile object that gets reshaped and reformed by every single flip.",
         "Book launch event at Waste Store London, 10th Dec, 2024"
       ],
-      "maxWidth": 480,
+      "maxWidth": 500,
       "align": "center",
       "lineHeight": 0.8,
-      "x": 3649,
-      "y": 1854,
-      "mx": 1285,
-      "my": 1531,
+      "x": 2737,
+      "y": 2162,
+      "mx": 1377,
+      "my": 1670,
       "style": "small"
     },
     {
@@ -544,14 +544,14 @@
         "Looking is encouraged but not guaranteed. By being here you agree that looking is an act and not all acts are reversible. Scrolling constitutes agreement.",
         " This site changes. Things move, appear, and disappear. Things might not be where it was."
       ],
-      "maxWidth": 400,
-      "align": "left",
+      "maxWidth": 600,
+      "align": "center",
       "lineHeight": 0.8,
-      "x": 1292,
-      "y": 2873,
+      "x": 1300,
+      "y": 2270,
       "style": "small",
-      "mx": -12,
-      "my": 1989
+      "mx": 1452,
+      "my": 2677
     }
   ]
 }
