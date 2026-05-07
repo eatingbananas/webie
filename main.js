@@ -1677,11 +1677,47 @@ Object.assign(scaleBarFill.style, {
   background: '#555',
   transition: 'height 0.15s ease',
 });
-scaleBarWrap.appendChild(scaleBarFill);
+
+let scaleBarDot = null;
+
 if (IS_MOBILE) {
-  scaleBarWrap.style.height        = '120px';
-  scaleBarWrap.style.pointerEvents = 'auto';
-  scaleBarWrap.style.cursor        = 'pointer';
+  scaleBarWrap.style.width             = '30px';
+  scaleBarWrap.style.marginLeft        = '-14px';
+  scaleBarWrap.style.background        = 'transparent';
+  scaleBarWrap.style.height            = '120px';
+  scaleBarWrap.style.pointerEvents     = 'auto';
+  scaleBarWrap.style.cursor            = 'pointer';
+  scaleBarWrap.style.userSelect        = 'none';
+  scaleBarWrap.style.WebkitUserSelect  = 'none';
+  scaleBarWrap.style.touchAction       = 'none';
+
+  const innerTrack = document.createElement('div');
+  Object.assign(innerTrack.style, {
+    position:   'absolute',
+    left:       '50%',
+    transform:  'translateX(-50%)',
+    width:      '2px',
+    height:     '100%',
+    background: 'rgba(0,0,0,0.12)',
+  });
+  innerTrack.appendChild(scaleBarFill);
+  scaleBarWrap.appendChild(innerTrack);
+
+  scaleBarDot = document.createElement('div');
+  Object.assign(scaleBarDot.style, {
+    position:      'absolute',
+    left:          '50%',
+    transform:     'translateX(-50%)',
+    width:         '10px',
+    height:        '10px',
+    borderRadius:  '50%',
+    background:    '#555',
+    pointerEvents: 'none',
+    bottom:        '0',
+  });
+  scaleBarWrap.appendChild(scaleBarDot);
+} else {
+  scaleBarWrap.appendChild(scaleBarFill);
 }
 
 function _updateScaleBar() {
@@ -1689,6 +1725,7 @@ function _updateScaleBar() {
   const max = IS_MOBILE ? 2 : 3;
   const pct = Math.max(0, Math.min(1, (_currentScale - min) / (max - min)));
   scaleBarFill.style.height = Math.round(pct * 100) + '%';
+  if (scaleBarDot) scaleBarDot.style.bottom = Math.round(pct * 100) + '%';
 }
 
 const zoomOutBtn = document.createElement('div');
@@ -1799,11 +1836,13 @@ if (IS_MOBILE) {
   let _barDragging = false;
   scaleBarWrap.addEventListener('touchstart', e => {
     e.preventDefault();
+    e.stopPropagation();
     _barDragging = true;
   }, { passive: false });
   scaleBarWrap.addEventListener('touchmove', e => {
     if (!_barDragging) return;
     e.preventDefault();
+    e.stopPropagation();
     const t    = e.touches[0];
     const rect = scaleBarWrap.getBoundingClientRect();
     const pct  = Math.max(0, Math.min(1, 1 - (t.clientY - rect.top) / rect.height));
@@ -2264,6 +2303,8 @@ if (!IS_MOBILE) {
     if (e.button !== 0) return;
     if (e.target.closest('button, a, input, video, select, textarea')) return;
     _dragging       = true;
+    document.body.style.userSelect = 'none';
+    document.body.style.WebkitUserSelect = 'none';
     _dragStartX     = e.clientX;
     _dragStartY     = e.clientY;
     _dragScrollLeft = scrollWrap.scrollLeft;
@@ -2273,6 +2314,7 @@ if (!IS_MOBILE) {
 
   window.addEventListener('mousemove', e => {
     if (!_dragging) return;
+    e.preventDefault();
     scrollWrap.scrollLeft = _dragScrollLeft - (e.clientX - _dragStartX);
     scrollWrap.scrollTop  = _dragScrollTop  - (e.clientY - _dragStartY);
   });
@@ -2280,6 +2322,8 @@ if (!IS_MOBILE) {
   window.addEventListener('mouseup', () => {
     if (!_dragging) return;
     _dragging = false;
+    document.body.style.userSelect = '';
+    document.body.style.WebkitUserSelect = '';
     scrollWrap.style.cursor = 'grab';
   });
 }
