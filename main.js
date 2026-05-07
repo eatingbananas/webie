@@ -915,6 +915,9 @@ function placeItem(item) {
         cursor:       'pointer',
         position:     'relative',
         borderRadius: '3px',
+        padding:      IS_MOBILE ? '' : '8px 0',
+        margin:       IS_MOBILE ? '' : '-8px 0',
+        boxSizing:    'content-box',
       });
       const timelineFill = document.createElement('div');
       Object.assign(timelineFill.style, {
