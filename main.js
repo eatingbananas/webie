@@ -402,13 +402,20 @@ function waitResolveAndCache() {
   function finish() {
     // resolveProjectOverlaps disabled — intentional overlaps allowed
 
-    // ── Compute bounding box of all placed images ────────────────────────────
+    // ── Compute bounding box of all placed images and texts ─────────────────
     let bx1 = -Infinity, by1 = -Infinity;
     for (const p of allPlaced) {
       const x = parseFloat(p.l1El.style.left);
       const y = parseFloat(p.l1El.style.top);
       const w = p.l1El.offsetWidth  || p.width;
       const h = p.l1El.offsetHeight || Math.round(p.width * 1.3);
+      bx1 = Math.max(bx1, x + w);   by1 = Math.max(by1, y + h);
+    }
+    for (const t of allTexts) {
+      const x = parseFloat(t.el.style.left);
+      const y = parseFloat(t.el.style.top);
+      const w = t.el.offsetWidth  || 0;
+      const h = t.el.offsetHeight || 0;
       bx1 = Math.max(bx1, x + w);   by1 = Math.max(by1, y + h);
     }
     if (!isFinite(bx1)) { bx1 = 800; by1 = 600; }
@@ -455,7 +462,7 @@ function waitResolveAndCache() {
     // scroll range) are clamped so the user cannot scroll to blank space.
     if (IS_MOBILE) {
       const narrowW = Math.round(bx1 + 20);
-      const narrowH = Math.round(by1 + 50);
+      const narrowH = Math.round(by1 + 300);
       surfW = narrowW;  // keep updateSpacer() in sync so scroll never exceeds stage right edge
       surfH = narrowH;  // clamp to content bottom so empty space below is not scrollable
       stage.style.width     = narrowW + 'px';
@@ -2096,8 +2103,8 @@ function mob_initPosition() {
     if (target) {
       const ix = parseFloat(target.l1El.style.left) + target.width / 2;
       const iy = parseFloat(target.l1El.style.top)  + (target.l1El.offsetHeight || Math.round(target.width * 1.3)) / 2;
-      mob_pos.x = Math.max(figW / 2, Math.min(vw - figW / 2, ix * _currentScale - sl));
-      mob_pos.y = Math.max(FIG_H / 2, Math.min(vh - FIG_H / 2, iy * _currentScale - st));
+      mob_pos.x = Math.max(figW / 4, Math.min(vw - figW / 4, ix * _currentScale - sl));
+      mob_pos.y = Math.max(FIG_H / 4, Math.min(vh - FIG_H / 4, iy * _currentScale - st));
       moveReveal(mob_pos.x, mob_pos.y);
       return;
     }
@@ -2174,8 +2181,8 @@ if ('ontouchstart' in window) {
       if (Math.abs(_velX) < MIN_VEL && Math.abs(_velY) < MIN_VEL) { _momentumRaf = null; return; }
       mob_pos.x += _velX;
       mob_pos.y += _velY;
-      mob_pos.x = Math.max(figW / 2, Math.min(window.innerWidth  - figW / 2, mob_pos.x));
-      mob_pos.y = Math.max(FIG_H / 2, Math.min(window.innerHeight - FIG_H / 2, mob_pos.y));
+      mob_pos.x = Math.max(figW / 4, Math.min(window.innerWidth  - figW / 4, mob_pos.x));
+      mob_pos.y = Math.max(FIG_H / 4, Math.min(window.innerHeight - FIG_H / 4, mob_pos.y));
       moveReveal(mob_pos.x, mob_pos.y);
       _momentumRaf = requestAnimationFrame(step);
     }
@@ -2210,8 +2217,8 @@ if ('ontouchstart' in window) {
     _currT = performance.now(); _currX = t.clientX; _currY = t.clientY;
     mob_pos.x = t.clientX + _mobDragOffX;
     mob_pos.y = t.clientY + _mobDragOffY;
-    mob_pos.x = Math.max(figW / 2, Math.min(window.innerWidth  - figW / 2, mob_pos.x));
-    mob_pos.y = Math.max(FIG_H / 2, Math.min(window.innerHeight - FIG_H / 2, mob_pos.y));
+    mob_pos.x = Math.max(figW / 4, Math.min(window.innerWidth  - figW / 4, mob_pos.x));
+    mob_pos.y = Math.max(FIG_H / 4, Math.min(window.innerHeight - FIG_H / 4, mob_pos.y));
     moveReveal(mob_pos.x, mob_pos.y);
   }, { passive: false });
 
