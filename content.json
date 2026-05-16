@@ -547,6 +547,7 @@
         " This site changes. Things move, appear, and disappear. Things might not be where it was."
       ],
       "maxWidth": 600,
+      "mMaxWidth": 220,
       "align": "center",
       "lineHeight": 0.8,
       "x": 1130,
