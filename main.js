@@ -1013,8 +1013,8 @@ function placeItem(item) {
     allLabels.push({ el, itemId: item.id });
 
     if (item.link) {
-      const lx = IS_MOBILE ? Math.round(item.link.x * MOB_X_SCALE) : item.link.x;
-      const ly = IS_MOBILE ? Math.round(item.link.y * MOB_Y_SCALE) : item.link.y;
+      const lx = IS_MOBILE ? (item.link.mlx !== undefined ? item.link.mlx : Math.round(item.link.x * MOB_X_SCALE)) : item.link.x;
+      const ly = IS_MOBILE ? (item.link.mly !== undefined ? item.link.mly : Math.round(item.link.y * MOB_Y_SCALE)) : item.link.y;
       const linkEl = document.createElement('a');
       linkEl.href        = item.link.href;
       linkEl.target      = '_blank';
