@@ -462,7 +462,7 @@ function waitResolveAndCache() {
     // scroll range) are clamped so the user cannot scroll to blank space.
     if (IS_MOBILE) {
       const narrowW = Math.round(bx1 + 20);
-      const narrowH = Math.round(by1 + 300);
+      const narrowH = Math.min(MOB_SURF_H, Math.round(by1 + 300));
       surfW = narrowW;  // keep updateSpacer() in sync so scroll never exceeds stage right edge
       surfH = narrowH;  // clamp to content bottom so empty space below is not scrollable
       stage.style.width     = narrowW + 'px';
