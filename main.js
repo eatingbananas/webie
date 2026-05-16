@@ -1243,7 +1243,7 @@ fetch('content.json')
         fontSize:      fontSizes[t.style] || '11px',
         color:         '#333',
         lineHeight:    t.lineHeight !== undefined ? String(t.lineHeight) : '1.5',
-        maxWidth:      (t.maxWidth ? t.maxWidth + 'px' : '160px'),
+        maxWidth:      ((IS_MOBILE && t.mMaxWidth) ? t.mMaxWidth + 'px' : (t.maxWidth ? t.maxWidth + 'px' : '160px')),
         wordSpacing:   '3px',
         textAlign:     t.align || 'left',
         pointerEvents: 'none',
