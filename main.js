@@ -516,7 +516,7 @@ function rebuildErosion(now) {
     g.addColorStop(1,   'rgba(0,0,0,0)');
 
     eCtx.save();
-    eCtx.globalCompositeOperation = 'lighter';
+    eCtx.globalCompositeOperation = 'source-over';
     eCtx.fillStyle = g;
     eCtx.beginPath();
     eCtx.arc(pt.ex, pt.ey, pt.r, 0, Math.PI * 2);
@@ -592,6 +592,7 @@ function restoreLoop(now) {
 }
 
 function applyMemory(sx, sy) {
+  if (!_pageReady) return;
   const dx = sx - lastMemX, dy = sy - lastMemY;
   if (dx * dx + dy * dy < MEM_STEP * MEM_STEP) return;
   lastMemX = sx; lastMemY = sy;
