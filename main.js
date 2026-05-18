@@ -1,2711 +1,560 @@
-'use strict';
-
-document.documentElement.style.visibility = 'hidden';
-
-const LANDING_ITEM_ID = '013';
-
-// Declared early so _syncOverlayBtns can read it before the zoom block below.
-let _currentScale = 1;
-
-const _manuallyPaused = new WeakSet();
-
-const layer1 = document.getElementById('layer1');
-const layer2 = document.getElementById('layer2');
-const stage  = document.getElementById('stage');
-
-// ── Scroll wrapper ────────────────────────────────────────────────────────────
-// scrollWrap is a fixed viewport-filling div with overflow:scroll.
-// stage sits inside it. spacer grows with scale to define the scrollable area.
-const scrollWrap = document.createElement('div');
-scrollWrap.id = 'scroll-wrap';
-document.body.insertBefore(scrollWrap, stage);
-scrollWrap.appendChild(stage);
-scrollWrap.addEventListener('scroll', _syncOverlayBtns, { passive: true });
-
-const spacer = document.createElement('div');
-spacer.id = 'scroll-spacer';
-Object.assign(spacer.style, {
-  position:      'absolute',
-  top:           '0',
-  left:          '0',
-  pointerEvents: 'none',
-  flexShrink:    '0',
-});
-scrollWrap.appendChild(spacer);
-
-// ── Layer 3: silhouette cursor (always sharp) ─────────────────────────────────
-const layer3      = document.createElement('div');
-const revealInner = document.createElement('div');
-
-Object.assign(layer3.style, {
-  position:           'fixed',
-  overflow:           'hidden',
-  pointerEvents:      'none',
-  zIndex:             '3',
-  top:                '0',
-  left:               '0',
-  transform:          'translate(-9999px, -9999px)',
-  willChange:         'transform',
-  backfaceVisibility: 'hidden',
-});
-
-Object.assign(revealInner.style, {
-  position:           'absolute',
-  background:         'rgba(255,255,255,0.75)',
-  willChange:         'transform',
-  backfaceVisibility: 'hidden',
-});
-
-layer3.appendChild(revealInner);
-document.body.appendChild(layer3);
-
-// ── Button overlay ────────────────────────────────────────────────────────────
-// play/pause/view/unmute/read buttons live here at z-index 4 (above layer3:3).
-// Position is synced every frame via rAF using scrollWrap scroll + stage zoom.
-// Each button stores _absX/_absY (unscaled stage coords); the loop converts to
-// viewport coords each frame so buttons always track their video on screen.
-const _btnOverlay = document.createElement('div');
-Object.assign(_btnOverlay.style, {
-  position:      'fixed',
-  top:           '0',
-  left:          '0',
-  width:         '100vw',
-  height:        '100vh',
-  pointerEvents: 'none',
-  zIndex:        '4',
-  overflow:      'hidden',
-  visibility:    'hidden',
-});
-document.body.appendChild(_btnOverlay);
-
-function _syncOverlayBtns() {
-  const sl = scrollWrap.scrollLeft;
-  const st = scrollWrap.scrollTop;
-  const z  = _currentScale;
-  for (const btn of _btnOverlay.children) {
-    if (btn._absX === undefined) continue;
-    btn.style.left     = Math.round(btn._absX * z - sl) + 'px';
-    btn.style.top      = Math.round(btn._absY * z - st) + 'px';
-    btn.style.fontSize = Math.round(10 * z) + 'px';
-  }
-}
-
-// ── Frost canvas ──────────────────────────────────────────────────────────────
-// layer1        — sharp images on #f0eeeb
-// frostCanvas   — quarter-scale, CSS-upscaled, CSS filter:blur(20px)
-//                 Redrawn each frame: imageCache + white tint, destination-out erosion holes
-// layer2        — labels (z-index 2)
-// layer3        — silhouette cursor, fixed z-index 3, always sharp
-
-const frostCanvas = document.createElement('canvas');
-frostCanvas.id = 'frost-canvas';
-Object.assign(frostCanvas.style, {
-  position:      'absolute',
-  top:           '0',
-  left:          '0',
-  zIndex:        '1',
-  filter:        'blur(20px)',
-  pointerEvents: 'none',
-});
-stage.insertBefore(frostCanvas, layer2);
-
-let frostCtx    = null;
-let imageCache  = null;
-let _frostDirty = true;
-
-// ── Erosion: time-based point list ───────────────────────────────────────────
-const erosionPoints = [];
-const DECAY_MS      = 3000;
-const MEM_SCALE     = 0.25;
-const MEM_RADIUS    = 182;
-const MEM_STEP      = 10;
-const DEPOSIT_ALPHA = 0.15;
-
-let eCtx  = null;
-let surfW = 0, surfH = 0;
-let _pageReady = false;
-let maxSurfW = 0, maxSurfH = 0;  // declared size from content.json — zoom floor reference
-let lastMemX = -Infinity, lastMemY = -Infinity;
-const erosionCanvas = document.createElement('canvas');
-
-const allPlaced = [];  // { src, x, y, width, itemId, l1El, riEl }
-const allLabels = [];  // { el, itemId }
-const allTexts  = [];  // { el, textId }
-const viewRects = new Set();  // active video view regions { x, y, w, h }
-
-function buildImageCache(eW, eH) {
-  console.log('[DBG] buildImageCache called — eW:', eW, 'eH:', eH, '| caller:', new Error().stack.split('\n')[2]);
-  const temp    = document.createElement('canvas');
-  temp.width    = eW;
-  temp.height   = eH;
-  const ctx     = temp.getContext('2d');
-  ctx.fillStyle = '#f0eeeb';
-  ctx.fillRect(0, 0, eW, eH);
-
-  // Helper: draw text elements from layer1 into the cache so they appear blurred.
-  function drawTextsIntoCache() {
-    layer1.querySelectorAll('.surface-text').forEach(el => {
-      const x    = parseFloat(el.style.left)     * MEM_SCALE;
-      const y    = parseFloat(el.style.top)      * MEM_SCALE;
-      const size = parseFloat(el.style.fontSize) * MEM_SCALE;
-      const maxW = parseFloat(el.style.maxWidth) * MEM_SCALE;
-      ctx.save();
-      ctx.fillStyle = '#333';
-      ctx.font      = `${size}px "Lucida Grande", Arial, sans-serif`;
-      // Word-wrap manually to match the CSS maxWidth
-      const words   = el.textContent.split(' ');
-      let line = '', lineY = y + size;
-      for (const word of words) {
-        const test = line ? line + ' ' + word : word;
-        if (ctx.measureText(test).width > maxW && line) {
-          ctx.fillText(line, x, lineY);
-          line  = word;
-          lineY += size * 1.5;
-        } else {
-          line = test;
+{
+  "surface_width": 4320,
+  "surface_height": 3120,
+  "items": [
+    {
+      "id": "001",
+      "type": "project",
+      "title": "Marlborough Road",
+      "year": "2024",
+      "images": [
+        {
+          "src": "WORKimages/2024_Marlborough_Road_1.jpg",
+          "width": 279,
+          "x": 1061,
+          "y": 188,
+          "mx": 234,
+          "my": 499,
+          "mw": 334
+        },
+        {
+          "src": "WORKimages/2024_Marlborough_Road_2.jpg",
+          "width": 208,
+          "x": 850,
+          "y": 322,
+          "mx": 413,
+          "my": 504,
+          "mw": 290
+        },
+        {
+          "src": "WORKimages/2024_Marlborough_Road_3.jpg",
+          "width": 230,
+          "x": 1490,
+          "y": 261,
+          "mx": 612,
+          "my": 525,
+          "mw": 244
+        },
+        {
+          "src": "WORKimages/2024_Marlborough_Road_4.jpg",
+          "width": 192,
+          "x": 1198,
+          "y": 645,
+          "mx": 403,
+          "my": 732,
+          "mw": 252
+        },
+        {
+          "src": "WORKimages/2024_Marlborough_Road_5.jpg",
+          "width": 168,
+          "x": 1324,
+          "y": 406,
+          "mx": 796,
+          "my": 403,
+          "mw": 234
         }
-      }
-      if (line) ctx.fillText(line, x, lineY);
-      ctx.restore();
-    });
-  }
-
-  let pending = allPlaced.length;
-  if (pending === 0) { drawTextsIntoCache(); imageCache = temp; return; }
-
-  // Read positions from DOM so cache always matches post-resolution layout
-  allPlaced.forEach(({ src, width, l1El }) => {
-    const x       = parseFloat(l1El.style.left);
-    const y       = parseFloat(l1El.style.top);
-    const isVideo = /\.(mp4|mov|webm|ogg)$/i.test(src);
-
-    if (isVideo) {
-      if (l1El.poster) {
-        // Video has a poster — draw the JPEG instead of the video frame.
-        const pImg = new Image();
-        const done = () => {
-          if (pImg.naturalWidth > 0) {
-            const drawH = pImg.naturalHeight * (width / pImg.naturalWidth);
-            ctx.drawImage(pImg,
-              x * MEM_SCALE, y * MEM_SCALE,
-              width * MEM_SCALE, drawH * MEM_SCALE);
-          }
-          if (--pending === 0) { drawTextsIntoCache(); imageCache = temp; }
-        };
-        pImg.onload  = done;
-        pImg.onerror = done;
-        pImg.src     = l1El.poster;
-        if (pImg.complete) { pImg.onload = null; pImg.onerror = null; done(); }
-      } else {
-        // Draw current video frame; video is already playing so a frame is ready.
-        const drawH = (l1El.videoHeight > 0)
-          ? l1El.videoHeight * (width / l1El.videoWidth)
-          : width * 0.75;
-        ctx.drawImage(l1El,
-          x * MEM_SCALE, y * MEM_SCALE,
-          width * MEM_SCALE, drawH * MEM_SCALE);
-        if (--pending === 0) { drawTextsIntoCache(); imageCache = temp; }
-      }
-    } else {
-      if (l1El.complete && l1El.naturalWidth > 0) {
-        const ih = l1El.naturalHeight * (width / l1El.naturalWidth);
-        ctx.drawImage(l1El,
-          x * MEM_SCALE, y * MEM_SCALE,
-          width * MEM_SCALE, ih * MEM_SCALE);
-        if (--pending === 0) { drawTextsIntoCache(); imageCache = temp; }
-      } else {
-        const img  = new Image();
-        const done = () => {
-          if (img.naturalWidth > 0) {
-            const ih = img.naturalHeight * (width / img.naturalWidth);
-            ctx.drawImage(img,
-              x * MEM_SCALE, y * MEM_SCALE,
-              width * MEM_SCALE, ih * MEM_SCALE);
-          }
-          if (--pending === 0) { drawTextsIntoCache(); imageCache = temp; }
-        };
-        img.onload  = done;
-        img.onerror = done;
-        img.src     = src;
-        if (img.complete) { img.onload = null; img.onerror = null; done(); }
-      }
-    }
-  });
-}
-
-function drawImageIntoFrost(l1El, width) {
-  if (!frostCtx) return;
-  if (!imageCache) {
-    const c   = document.createElement('canvas');
-    c.width   = frostCanvas.width;
-    c.height  = frostCanvas.height;
-    const ctx = c.getContext('2d');
-    ctx.fillStyle = '#f0eeeb';
-    ctx.fillRect(0, 0, c.width, c.height);
-    imageCache = c;
-  }
-  const ctx = imageCache.getContext('2d');
-  const x   = parseFloat(l1El.style.left) * MEM_SCALE;
-  const y   = parseFloat(l1El.style.top)  * MEM_SCALE;
-  const w   = width * MEM_SCALE;
-  const h   = (l1El instanceof HTMLVideoElement)
-    ? (l1El.videoHeight > 0 ? l1El.videoHeight * (width / l1El.videoWidth) * MEM_SCALE : w * 0.75)
-    : (l1El.naturalWidth  > 0 ? l1El.naturalHeight * (width / l1El.naturalWidth) * MEM_SCALE : w * 0.75);
-  ctx.drawImage(l1El, x, y, w, h);
-}
-
-function drawTextsIntoFrost() {
-  if (!frostCtx) return;
-  if (!imageCache) {
-    const c   = document.createElement('canvas');
-    c.width   = frostCanvas.width;
-    c.height  = frostCanvas.height;
-    const ctx = c.getContext('2d');
-    ctx.fillStyle = '#f0eeeb';
-    ctx.fillRect(0, 0, c.width, c.height);
-    imageCache = c;
-  }
-  const ctx = imageCache.getContext('2d');
-  layer1.querySelectorAll('.surface-text').forEach(el => {
-    const x    = parseFloat(el.style.left)     * MEM_SCALE;
-    const y    = parseFloat(el.style.top)      * MEM_SCALE;
-    const size = parseFloat(el.style.fontSize) * MEM_SCALE;
-    const maxW = parseFloat(el.style.maxWidth) * MEM_SCALE;
-    ctx.save();
-    ctx.fillStyle = '#333';
-    ctx.font      = `${size}px "Lucida Grande", Arial, sans-serif`;
-    const words   = el.textContent.split(' ');
-    let line = '', lineY = y + size;
-    for (const word of words) {
-      const test = line ? line + ' ' + word : word;
-      if (ctx.measureText(test).width > maxW && line) {
-        ctx.fillText(line, x, lineY);
-        line  = word;
-        lineY += size * 1.5;
-      } else {
-        line = test;
-      }
-    }
-    if (line) ctx.fillText(line, x, lineY);
-    ctx.restore();
-  });
-}
-
-// ── Project collision resolution ──────────────────────────────────────────────
-// Per-image collision resolver. Minimum gap between any two images: 30px.
-// Between images from different projects: 200px gap, UNLESS either image's
-// item type is 'loose' or 'found' (those use 30px regardless).
-// Called after all layer1 images load so real heights are available.
-// buildImageCache is called afterwards so the frost layer matches.
-
-function resolveProjectOverlaps() {
-  const SAME_GAP  = 0;
-  const CROSS_GAP = 0;
-  const EXEMPT_TYPES = new Set(['loose', 'found']);
-
-  // Build a lookup of itemId → item type from allPlaced (type stored on element)
-  // We tag each placed element with its type during placeItem via data-item-type.
-  function getPad(pA, pB) {
-    if (pA.itemId === pB.itemId) return SAME_GAP;
-    if (EXEMPT_TYPES.has(pA.itemType) || EXEMPT_TYPES.has(pB.itemType)) return SAME_GAP;
-    return CROSS_GAP;
-  }
-
-  function getRect(p) {
-    const x = parseFloat(p.l1El.style.left);
-    const y = parseFloat(p.l1El.style.top);
-    const w = p.l1El.offsetWidth  || p.width;
-    const h = p.l1El.offsetHeight || Math.round(p.width * 1.3);
-    return { x, y, w, h };
-  }
-
-  function moveImage(p, dx, dy) {
-    const nx = Math.round(parseFloat(p.l1El.style.left) + dx);
-    const ny = Math.round(parseFloat(p.l1El.style.top)  + dy);
-    p.l1El.style.left = nx + 'px';  p.l1El.style.top = ny + 'px';
-    p.riEl.style.left = nx + 'px';  p.riEl.style.top = ny + 'px';
-    // Move buttons and timeline with the video.
-    if (p.btns) {
-      for (const btn of p.btns) {
-        btn._absX = Math.round((btn._absX || 0) + dx);
-        btn._absY = Math.round((btn._absY || 0) + dy);
-      }
-    }
-    if (p.timelineEl) {
-      p.timelineEl.style.left = Math.round(parseFloat(p.timelineEl.style.left) + dx) + 'px';
-      p.timelineEl.style.top  = Math.round(parseFloat(p.timelineEl.style.top)  + dy) + 'px';
-    }
-  }
-
-  // Also move labels that belong to the same project as a shifted image.
-  // Labels are shifted proportionally when their entire project group moves.
-  // For per-image resolution we track net displacement per itemId.
-  const netDisp = {};  // itemId → { dx, dy }
-
-  for (const p of allPlaced) {
-    if (!netDisp[p.itemId]) netDisp[p.itemId] = { dx: 0, dy: 0 };
-  }
-
-  for (let pass = 0; pass < 60; pass++) {
-    let anyOverlap = false;
-    for (let i = 0; i < allPlaced.length; i++) {
-      for (let j = i + 1; j < allPlaced.length; j++) {
-        const pA = allPlaced[i];
-        const pB = allPlaced[j];
-        if (pA.itemId.startsWith('dump_') || pB.itemId.startsWith('dump_')) continue;
-        const pad = getPad(pA, pB);
-        const a = getRect(pA);
-        const b = getRect(pB);
-
-        const ox = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x) + pad;
-        const oy = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y) + pad;
-        if (ox <= 0 || oy <= 0) continue;
-
-        anyOverlap = true;
-        // Push along the axis with the smaller overlap
-        if (ox <= oy) {
-          const push = ox / 2;
-          const dir  = (a.x + a.w / 2 <= b.x + b.w / 2) ? 1 : -1;
-          moveImage(pA, -push * dir, 0);
-          moveImage(pB,  push * dir, 0);
-          netDisp[pA.itemId].dx -= push * dir;
-          netDisp[pB.itemId].dx += push * dir;
-        } else {
-          const push = oy / 2;
-          const dir  = (a.y + a.h / 2 <= b.y + b.h / 2) ? 1 : -1;
-          moveImage(pA, 0, -push * dir);
-          moveImage(pB, 0,  push * dir);
-          netDisp[pA.itemId].dy -= push * dir;
-          netDisp[pB.itemId].dy += push * dir;
+      ],
+      "text": "Marlborough Road, 2024"
+    },
+    {
+      "id": "002",
+      "type": "project",
+      "title": "Jake Zhang",
+      "year": "2026",
+      "images": [
+        {
+          "src": "WORKimages/2026_JakeZhang_1.jpg",
+          "width": 336,
+          "x": 2463,
+          "y": 996,
+          "mx": 837,
+          "my": 1152,
+          "mw": 362
+        },
+        {
+          "src": "WORKimages/2026_JakeZhang_2.jpg",
+          "width": 197,
+          "x": 2630,
+          "y": 839,
+          "mx": 1153,
+          "my": 937,
+          "mw": 232
+        },
+        {
+          "src": "WORKimages/2026_JakeZhang_3.jpg",
+          "width": 89,
+          "x": 2376,
+          "y": 967,
+          "mx": 819,
+          "my": 1018,
+          "mw": 164
+        },
+        {
+          "src": "WORKimages/2026_JakeZhang_4.jpg",
+          "width": 144,
+          "x": 2335,
+          "y": 1028,
+          "mx": 701,
+          "my": 1076,
+          "mw": 276
+        },
+        {
+          "src": "WORKimages/2026_Jake_Zhang_5.jpg",
+          "width": 210,
+          "x": 1521,
+          "y": 1859,
+          "mx": 1266,
+          "my": 978,
+          "mw": 292
+        },
+        {
+          "src": "WORKimages/2026_Jake_Zhang_6.jpg",
+          "width": 105,
+          "x": 2792,
+          "y": 1080,
+          "mx": 1019,
+          "my": 1088,
+          "mw": 192
         }
-      }
-    }
-    if (!anyOverlap) break;
-  }
-
-  // Shift labels by the net displacement accumulated for their project.
-  for (const lb of allLabels) {
-    const d = netDisp[lb.itemId];
-    if (!d || (d.dx === 0 && d.dy === 0)) continue;
-    lb.el.style.left = Math.round(parseFloat(lb.el.style.left) + d.dx) + 'px';
-    lb.el.style.top  = Math.round(parseFloat(lb.el.style.top)  + d.dy) + 'px';
-  }
-
-}
-
-// Wait for all layer1 images to load, resolve collisions, resize the surface to
-// fit all content, then build the frost cache and scroll to the new centre.
-function waitResolveAndCache() {
-  const imgs = Array.from(layer1.querySelectorAll('img')).filter(img => img.hasAttribute('src'));
-  let pending = imgs.length;
-
-  function finish() {
-    // resolveProjectOverlaps disabled — intentional overlaps allowed
-
-    // ── Compute bounding box of all placed images and texts ─────────────────
-    let bx1 = -Infinity, by1 = -Infinity;
-    for (const p of allPlaced) {
-      const x = parseFloat(p.l1El.style.left);
-      const y = parseFloat(p.l1El.style.top);
-      const w = p.l1El.offsetWidth  || p.width;
-      const h = p.l1El.offsetHeight || Math.round(p.width * 1.3);
-      bx1 = Math.max(bx1, x + w);   by1 = Math.max(by1, y + h);
-    }
-    for (const t of allTexts) {
-      const x = parseFloat(t.el.style.left);
-      const y = parseFloat(t.el.style.top);
-      const w = t.el.offsetWidth  || 0;
-      const h = t.el.offsetHeight || 0;
-      bx1 = Math.max(bx1, x + w);   by1 = Math.max(by1, y + h);
-    }
-    if (!isFinite(bx1)) { bx1 = 800; by1 = 600; }
-
-    surfW = Math.round(bx1);
-    surfH = Math.round(by1);
-
-    // Clamp current scale to new minimum now that surfW/surfH are finalised.
-    const minAfterResize = getMinScale();
-    if (_currentScale < minAfterResize) {
-      applyScale(minAfterResize, surfW / 2, surfH / 2);
-    }
-
-    const w = surfW + 'px';
-    const h = surfH + 'px';
-
-    for (const el of [stage, layer1, layer2]) {
-      el.style.width  = w;
-      el.style.height = h;
-    }
-    revealInner.style.width  = w;
-    revealInner.style.height = h;
-
-    const eW = Math.round(surfW * MEM_SCALE);
-    const eH = Math.round(surfH * MEM_SCALE);
-
-    erosionCanvas.width  = eW;
-    erosionCanvas.height = eH;
-    eCtx = erosionCanvas.getContext('2d');
-
-    frostCanvas.width        = eW;
-    frostCanvas.height       = eH;
-    frostCanvas.style.width  = w;
-    frostCanvas.style.height = h;
-    frostCtx = frostCanvas.getContext('2d');
-
-    buildImageCache(eW, eH);
-
-    updateSpacer();
-
-    // ── Mobile scroll bounds ─────────────────────────────────────────────────
-    // Layers, canvas, and image cache keep their full computed dimensions.
-    // Only the stage dimensions and the spacer (which drives scrollWrap's
-    // scroll range) are clamped so the user cannot scroll to blank space.
-    if (IS_MOBILE) {
-      const narrowW = Math.round(bx1 + 20);
-      const narrowH = Math.min(MOB_SURF_H, Math.round(by1 + 300));
-      surfW = narrowW;  // keep updateSpacer() in sync so scroll never exceeds stage right edge
-      surfH = narrowH;  // clamp to content bottom so empty space below is not scrollable
-      stage.style.width     = narrowW + 'px';
-      stage.style.height    = narrowH + 'px';
-      stage.style.overflowX = 'hidden';
-      stage.style.overflowY = 'hidden';
-      // Override the spacer so scrollWrap's scrollable area matches exactly.
-      spacer.style.width  = narrowW + 'px';
-      spacer.style.height = narrowH + 'px';
-
-      // Reposition GuestWeb (created by the module in index.html) to fit
-      // within the narrowed canvas.
-      const _posGW = () => {
-        const gwEl = document.getElementById('guestweb-area');
-        if (!gwEl) return;
-        gwEl.style.left = '50px';
-        gwEl.style.top  = '2000px';
-      };
-      setTimeout(_posGW, 0);
-      setTimeout(_posGW, 600);  // retry after Firebase entries may have shifted layout
-
-    }
-    _pageReady = true;
-    _btnOverlay.style.visibility = '';
-    _syncOverlayBtns();
-    if (IS_MOBILE && figW > 0) mob_initPosition();
-  }
-
-  if (pending === 0) { finish(); return; }
-
-  const done = () => { if (--pending === 0) finish(); };
-  imgs.forEach(img => {
-    if (img.complete) { done(); return; }
-    img.addEventListener('load',  done, { once: true });
-    img.addEventListener('error', done, { once: true });
-  });
-}
-
-function rebuildErosion(now) {
-  if (!eCtx) return;
-  const eW = erosionCanvas.width, eH = erosionCanvas.height;
-  eCtx.clearRect(0, 0, eW, eH);
-
-  for (const pt of erosionPoints) {
-    const age      = now - pt.addedAt;
-    const strength = 1 - age / DECAY_MS;
-
-    const g = eCtx.createRadialGradient(pt.ex, pt.ey, 0, pt.ex, pt.ey, pt.r);
-    g.addColorStop(0,   `rgba(0,0,0,${DEPOSIT_ALPHA * strength})`);
-    g.addColorStop(0.5, `rgba(0,0,0,${DEPOSIT_ALPHA * 0.6 * strength})`);
-    g.addColorStop(1,   'rgba(0,0,0,0)');
-
-    eCtx.save();
-    eCtx.globalCompositeOperation = 'source-over';
-    eCtx.fillStyle = g;
-    eCtx.beginPath();
-    eCtx.arc(pt.ex, pt.ey, pt.r, 0, Math.PI * 2);
-    eCtx.fill();
-    eCtx.restore();
-  }
-}
-
-function drawFrost() {
-  if (!frostCtx) return;
-  const w = frostCanvas.width, h = frostCanvas.height;
-
-  frostCtx.clearRect(0, 0, w, h);
-  if (imageCache) {
-    frostCtx.drawImage(imageCache, 0, 0);
-  } else {
-    frostCtx.fillStyle = '#f0eeeb';
-    frostCtx.fillRect(0, 0, w, h);
-    frostCtx.fillStyle = 'rgba(255,255,255,0.72)';
-    frostCtx.fillRect(0, 0, w, h);
-    return;
-  }
-
-  // Draw current video frames on top of imageCache each frame.
-  // Images are baked into imageCache once; videos need live redraw.
-  for (const p of allPlaced) {
-    if (!(p.l1El instanceof HTMLVideoElement)) continue;
-    if (p.l1El.readyState < 2) continue;  // no frame available yet
-    if (p.l1El.paused && p.l1El.poster) continue;  // poster video paused — imageCache has the right image
-    const x = parseFloat(p.l1El.style.left);
-    const y = parseFloat(p.l1El.style.top);
-    const drawW = p.width * MEM_SCALE;
-    const drawH = p.l1El.videoHeight > 0
-      ? p.l1El.videoHeight * (p.width / p.l1El.videoWidth) * MEM_SCALE
-      : drawW * 0.75;
-    frostCtx.drawImage(p.l1El, x * MEM_SCALE, y * MEM_SCALE, drawW, drawH);
-  }
-  frostCtx.fillStyle = 'rgba(255,255,255,0.72)';
-  frostCtx.fillRect(0, 0, w, h);
-
-  frostCtx.globalCompositeOperation = 'destination-out';
-  frostCtx.drawImage(erosionCanvas, 0, 0);
-  frostCtx.globalCompositeOperation = 'source-over';
-
-  // Clear video view rects completely — same effect as silhouette cursor reveal.
-  for (const r of viewRects) {
-    frostCtx.clearRect(r.x * MEM_SCALE, r.y * MEM_SCALE, r.w * MEM_SCALE, r.h * MEM_SCALE);
-  }
-}
-
-function restoreLoop(now) {
-  while (erosionPoints.length > 0 && now - erosionPoints[0].addedAt >= DECAY_MS) {
-    erosionPoints.shift();
-    _frostDirty = true;
-  }
-  // Playing video frames are always changing — mark dirty so frost stays in sync.
-  if (!_frostDirty) {
-    for (const p of allPlaced) {
-      if (p.l1El instanceof HTMLVideoElement && p.l1El.readyState >= 2 && !p.l1El.paused) {
-        _frostDirty = true;
-        break;
-      }
-    }
-  }
-  if (IS_MOBILE && !_frostDirty) {
-    requestAnimationFrame(restoreLoop);
-    return;
-  }
-  rebuildErosion(now);
-  drawFrost();
-  _frostDirty = false;
-  requestAnimationFrame(restoreLoop);
-}
-
-function applyMemory(sx, sy) {
-  if (!_pageReady) return;
-  const dx = sx - lastMemX, dy = sy - lastMemY;
-  if (dx * dx + dy * dy < MEM_STEP * MEM_STEP) return;
-  lastMemX = sx; lastMemY = sy;
-
-  erosionPoints.push({
-    ex:      sx * MEM_SCALE,
-    ey:      sy * MEM_SCALE,
-    r:       MEM_RADIUS * MEM_SCALE,
-    addedAt: performance.now(),
-  });
-  _frostDirty = true;
-}
-
-// ── Seeded RNG (xorshift32) ───────────────────────────────────────────────────
-function makeRand(seed) {
-  let s = (seed >>> 0) || 1;
-  return (min, max) => {
-    s ^= s << 13;
-    s ^= s >>> 17;
-    s ^= s << 5;
-    s = s >>> 0;
-    return min + (s / 0x100000000) * (max - min);
-  };
-}
-
-function strToSeed(str) {
-  let h = 5381;
-  for (let i = 0; i < str.length; i++) {
-    h = (Math.imul(h, 33) ^ str.charCodeAt(i)) >>> 0;
-  }
-  return h;
-}
-
-// Seeded ragged wrap — splits text into at most maxLines lines with random
-// word counts per line, giving an uneven right edge.
-function raggedWrap(content, textId, maxLines) {
-  const rand  = makeRand(strToSeed(textId));
-  const words = content.split(' ');
-  const lines = [];
-  let rem = words.slice();
-  for (let i = 0; i < maxLines - 1 && rem.length > 0; i++) {
-    const linesLeft = maxLines - i;
-    const avg  = rem.length / linesLeft;
-    const minW = Math.max(1, Math.floor(avg * 0.65));
-    const maxW = Math.ceil(avg * 1.35);
-    const count = Math.min(Math.round(rand(minW, maxW)), rem.length - (linesLeft - 1));
-    lines.push(rem.splice(0, count).join(' '));
-  }
-  if (rem.length > 0) lines.push(rem.join(' '));
-  return lines.join('<br>');
-}
-
-// ── Mobile layout detection ───────────────────────────────────────────────────
-// Add ?mob=1 to the URL on desktop to preview the mobile layout and use
-// the P-key drag editor to manually set mobile positions.
-const IS_MOBILE = window.innerWidth < 768 ||
-  new URLSearchParams(window.location.search).has('mob');
-// Mobile surface dimensions.
-const MOB_SURF_W = 2200;
-const MOB_SURF_H = 3500;
-
-// Scale factors — set in the fetch handler once data.surface_width/height are known.
-// mobilizeImage() uses these to remap desktop coordinates to mobile space.
-let MOB_X_SCALE = 1;
-let MOB_Y_SCALE = 1;
-
-// ── Mobile image size ─────────────────────────────────────────────────────────
-// Controls how large mobile images are relative to their desktop size.
-// 1.0 = same pixel width as the position-scaled desktop image (~37% of desktop).
-// 1.5 = 50% bigger than position-scaled  (~55% of desktop).
-// 2.0 = same physical size as desktop images (100% relative to desktop would be ~2.7).
-// Positions are NOT affected — only rendered width changes. The collision resolver
-// will automatically push overlapping images apart after scaling.
-const MOB_IMG_SCALE = 0.5;
-
-function mobilizeImage(img) {
-  if (!IS_MOBILE) return img;
-  // Use manually placed mobile coordinates when present (mx/my/mw in content.json).
-  if (img.mx !== undefined) {
-    return { src: img.src, width: Math.round(img.mw * MOB_IMG_SCALE), x: img.mx, y: img.my };
-  }
-  return {
-    src:   img.src,
-    width: Math.max(20, Math.round(img.width * MOB_X_SCALE * MOB_IMG_SCALE)),
-    x:     Math.round(img.x * MOB_X_SCALE),
-    y:     Math.round(img.y * MOB_Y_SCALE),
-  };
-}
-
-// ── Place one item ────────────────────────────────────────────────────────────
-function placeItem(item) {
-  const rand = makeRand(strToSeed(item.id));
-  // Positions come directly from x,y on each image entry in the JSON.
-  // On mobile, positions and widths are remapped to the narrower surface.
-  const placed = item.images.map(img => mobilizeImage(img));
-
-  placed.forEach(({ src, x, y, width }) => {
-    const isVideo = /\.(mp4|mov|webm|ogg)$/i.test(src);
-
-    function makeEl() {
-      let el;
-      if (isVideo) {
-        el = document.createElement('video');
-        el.dataset.src = src;  // real src stored here; loaded lazily by observer
-        el.autoplay    = true;
-        el.loop        = true;
-        el.muted       = true;
-        el.playsInline = true;
-        el.preload     = 'none';
-        el.setAttribute('playsinline', '');
-        el.setAttribute('webkit-playsinline', '');  // older Safari
-        el.controls    = false;
-      } else {
-        el = document.createElement('img');
-        el.dataset.src = src;  // lazy-loaded by shared observer
-      }
-      el.style.position = 'absolute';
-      el.style.left     = x + 'px';
-      el.style.top      = y + 'px';
-      el.style.width    = width + 'px';
-      el.style.height   = 'auto';
-      return el;
-    }
-    const l1El = makeEl();
-    if (isVideo) {
-      l1El.src     = src;
-      l1El.preload = 'metadata';
-      const _posterMap = {
-        'WORKimages/2025_BirthLookReveal.mp4':  'WORKimages/2025_Birthlook_3.jpeg',
-        'WORKimages/2024_Communistagram.mp4':   'WORKimages/2024_Communistagram.jpeg',
-        'WORKimages/2025_Chanel_window.mp4':    'WORKimages/2025_Chanel_Window.jpeg',
-      };
-      if (_posterMap[src]) {
-        /** @type {HTMLVideoElement} */ (l1El).poster = _posterMap[src];
-      }
-      if (IS_MOBILE) {
-        l1El.addEventListener('loadeddata', () => {
-          const v = /** @type {HTMLVideoElement} */ (l1El);
-          v.play().then(() => v.pause()).catch(() => {});
-        }, { once: true });
-      }
-    }
-    const riEl = makeEl();
-    if (isVideo && /** @type {HTMLVideoElement} */ (l1El).poster) {
-      /** @type {HTMLVideoElement} */ (riEl).poster = /** @type {HTMLVideoElement} */ (l1El).poster;
-    }
-    if (!isVideo) l1El._riEl = riEl;
-    _pendingL1.appendChild(l1El);
-    _pendingRI.appendChild(riEl);
-    // For video: call play() explicitly after insertion — needed in some browsers
-    // when autoplay attribute alone is not honoured for .mov files.
-    if (isVideo) {
-      riEl.muted = true;  // frost copy is always muted — visual only, never produces sound
-
-      // Lazy-load: observe l1El; when it enters viewport load riEl then play both.
-      const videoObserver = new IntersectionObserver((entries, obs) => {
-        if (!entries[0].isIntersecting) return;
-        obs.disconnect();
-        const lazySrc = riEl.dataset.src;
-        if (lazySrc) {
-          riEl.src     = lazySrc;
-          riEl.preload = 'auto';
+      ],
+      "text": "Jake Zhang, 2026"
+    },
+    {
+      "id": "003",
+      "type": "loose",
+      "title": "Female Photographer",
+      "year": "2024",
+      "images": [
+        {
+          "src": "WORKimages/2024_Female_Photographer.jpg",
+          "width": 482,
+          "x": 2262,
+          "y": 16,
+          "mx": 1160,
+          "my": 380,
+          "mw": 318
         }
-        l1El.play().catch(() => {});
-        riEl.play().catch(() => {});
-        riEl.addEventListener('loadeddata', () => { riEl.currentTime = l1El.currentTime; }, { once: true });
-        l1El.addEventListener('timeupdate', () => {
-          if (Math.abs(l1El.currentTime - riEl.currentTime) > 0.3) {
-            riEl.currentTime = l1El.currentTime;
-          }
-        });
-      }, IS_MOBILE ? { rootMargin: '400px' } : { root: scrollWrap, rootMargin: '200px' });
-      videoObserver.observe(l1El);
-    }
-    const placedEntry = { src, x, y, width, itemId: item.id, itemType: item.type || '', l1El, riEl, btns: [], timelineEl: null };
-    allPlaced.push(placedEntry);
-
-    // Images that navigate to their project cluster when clicked.
-    if (src.endsWith('ScreenShotThis_2.jpg') || src.endsWith('Birthlook_3.jpeg') || src.endsWith('Jake_Zhang_5.jpg')) {
-      l1El.dataset.clicknav = '1';
-      const _navSrc    = src;
-      const _navItemId = item.id;
-      l1El.addEventListener('click', () => navigateToProject(_navItemId, _navSrc));
-    }
-
-    // For videos: always-visible text buttons at random position + timeline at bottom.
-    if (isVideo) {
-      function fmtTime(s) {
-        if (!isFinite(s) || isNaN(s)) return '0:00';
-        const m = Math.floor(s / 60);
-        const sec = Math.floor(s % 60);
-        return m + ':' + (sec < 10 ? '0' : '') + sec;
-      }
-
-      const btnY = Math.round(y + rand(10, 40));
-      const btnX = Math.round(x + rand(10, width * 0.4));
-      let btnOffX = 0;
-
-      function makeBtn(label) {
-        const el = document.createElement('div');
-        el.textContent = label;
-        Object.assign(el.style, {
-          position:      'absolute',
-          fontFamily:    '"Lucida Grande", Verdana, Geneva, sans-serif',
-          fontSize:      '10px',
-          color:         '#333',
-          cursor:        'pointer',
-          userSelect:    'none',
-          pointerEvents: 'auto',
-          padding:       '10px 14px',
-          margin:        '-10px -14px',
-          whiteSpace:    'nowrap',
-        });
-        el._absX = btnX + btnOffX;
-        el._absY = btnY;
-        _btnOverlay.appendChild(el);
-        btnOffX += 70;
-        return el;
-      }
-
-      // Play / pause
-      const playBtn = makeBtn('play');
-      l1El.addEventListener('play',  () => { playBtn.textContent = 'pause'; });
-      l1El.addEventListener('pause', () => { playBtn.textContent = 'play';  });
-      if (!l1El.paused) playBtn.textContent = 'pause';
-      playBtn.addEventListener('click', () => {
-        const v1 = /** @type {HTMLVideoElement} */ (l1El);
-        const v2 = /** @type {HTMLVideoElement} */ (riEl);
-        if (v1.paused) {
-          _manuallyPaused.delete(v1);
-          _manuallyPaused.delete(v2);
-          v1.play().catch(() => {});
-          v2.play().catch(() => {});
-          playBtn.textContent = 'pause';
-        } else {
-          _manuallyPaused.add(v1);
-          _manuallyPaused.add(v2);
-          v1.pause();
-          v2.pause();
-          playBtn.textContent = 'play';
+      ],
+      "text": null
+    },
+    {
+      "id": "004",
+      "type": "found",
+      "title": "Daiva's Craft",
+      "year": 2024,
+      "images": [
+        {
+          "src": "WORKimages/2024_DaivasCraft_1.jpeg",
+          "width": 659,
+          "x": 3628,
+          "y": 178,
+          "mx": 1522,
+          "my": 150,
+          "mw": 446
         }
-      });
-
-      // View
-      const viewBtn = makeBtn('view');
-      let _viewTimeout = null;
-      let _viewRect    = null;
-
-      function stopView() {
-        clearTimeout(_viewTimeout);
-        _viewTimeout = null;
-        if (_viewRect) { viewRects.delete(_viewRect); _viewRect = null; }
-        viewBtn.textContent = 'view';
-        _frostDirty = true;
-      }
-
-      viewBtn.addEventListener('click', () => {
-        if (_viewRect) { stopView(); return; }
-        viewBtn.textContent = 'hide';
-        const liveX = parseFloat(l1El.style.left);
-        const liveY = parseFloat(l1El.style.top);
-        const vidH = l1El.videoHeight > 0
-          ? Math.round(l1El.videoHeight * (width / l1El.videoWidth))
-          : Math.round(width * 0.75);
-        _viewRect = { x: liveX, y: liveY, w: width, h: vidH };
-        viewRects.add(_viewRect);
-        _frostDirty = true;
-        const dur = (l1El.duration && isFinite(l1El.duration))
-          ? l1El.duration * 1000 : 5000;
-        _viewTimeout = setTimeout(stopView, dur);
-      });
-
-      // Mute / unmute
-      const muteBtn = makeBtn('unmute');
-      muteBtn.className = 'mute-btn';
-      muteBtn.addEventListener('click', () => {
-        if (l1El.muted) {
-          layer1.querySelectorAll('video').forEach(v => { v.muted = true; });
-          _btnOverlay.querySelectorAll('.mute-btn').forEach(b => { b.textContent = 'unmute'; });
-          l1El.muted = false;
-          muteBtn.textContent = 'mute';
-        } else {
-          l1El.muted = true;
-          muteBtn.textContent = 'unmute';
+      ],
+      "text": "Daiva's Craft, 2024"
+    },
+    {
+      "id": "005",
+      "type": "loose",
+      "title": "",
+      "year": "2024",
+      "images": [
+        {
+          "src": "WORKimages/2024_Jack_bed_photo.webp",
+          "width": 224,
+          "x": 4348,
+          "y": 212,
+          "mx": 1896,
+          "my": 396,
+          "mw": 252
         }
-      });
-
-
-      placedEntry.btns.push(playBtn, viewBtn, muteBtn);
-
-      // ── Timeline: always visible, fixed at bottom of video ───────────────────
-      const timelineRow = document.createElement('div');
-      Object.assign(timelineRow.style, {
-        position:    'absolute',
-        left:        x + 'px',
-        top:         (y + Math.round(width * 0.75)) + 'px',  // updated on loadedmetadata
-        width:       width + 'px',
-        display:     'flex',
-        alignItems:  'center',
-        gap:         '5px',
-        boxSizing:   'border-box',
-        fontFamily:  '"Lucida Grande", Verdana, Geneva, sans-serif',
-        fontSize:    '10px',
-        color:       '#333',
-        userSelect:  'none',
-        pointerEvents: 'auto',
-      });
-      layer2.appendChild(timelineRow);
-      placedEntry.timelineEl = timelineRow;
-
-      const currentTimeEl = document.createElement('div');
-      currentTimeEl.textContent = '0:00';
-      Object.assign(currentTimeEl.style, { flexShrink: '0', minWidth: '26px' });
-      timelineRow.appendChild(currentTimeEl);
-
-      const timelineTrack = document.createElement('div');
-      Object.assign(timelineTrack.style, {
-        width:         '100%',
-        height:        '5px',
-        background:    'rgba(0,0,0,0.12)',
-        position:      'relative',
-        borderRadius:  '3px',
-        pointerEvents: 'none',
-      });
-      const timelineFill = document.createElement('div');
-      Object.assign(timelineFill.style, {
-        position:      'absolute',
-        left:          '0',
-        top:           '0',
-        height:        '100%',
-        width:         '0%',
-        background:    '#555',
-        borderRadius:  '3px',
-        pointerEvents: 'none',
-      });
-      timelineTrack.appendChild(timelineFill);
-
-      const timelineHit = document.createElement('div');
-      Object.assign(timelineHit.style, {
-        flex:        '1',
-        display:     'flex',
-        alignItems:  'center',
-        cursor:      'pointer',
-        padding:     IS_MOBILE ? '0' : '10px 0',
-        margin:      IS_MOBILE ? '0' : '-10px 0',
-      });
-      timelineHit.appendChild(timelineTrack);
-      timelineRow.appendChild(timelineHit);
-
-      const totalTimeEl = document.createElement('div');
-      totalTimeEl.textContent = '0:00';
-      Object.assign(totalTimeEl.style, { flexShrink: '0', minWidth: '26px' });
-      timelineRow.appendChild(totalTimeEl);
-
-      // Fix timeline position once actual video height is known
-      function updateTimelinePos() {
-        if (l1El.videoHeight > 0 && l1El.videoWidth > 0) {
-          const vidH = Math.round(l1El.videoHeight * (width / l1El.videoWidth));
-          timelineRow.style.top = (y + vidH + 4) + 'px';
+      ],
+      "text": ""
+    },
+    {
+      "id": "007",
+      "type": "project",
+      "title": "JO",
+      "year": "2025",
+      "images": [
+        {
+          "src": "WORKimages/2025_JO_1.jpg",
+          "width": 90,
+          "x": 5157,
+          "y": 1255,
+          "mx": 205,
+          "my": 2192,
+          "mw": 110
+        },
+        {
+          "src": "WORKimages/2025_JO_2.jpg",
+          "width": 98,
+          "x": 4668,
+          "y": 1223,
+          "mx": 406,
+          "my": 2316,
+          "mw": 130
         }
-      }
-      l1El.addEventListener('loadedmetadata', () => {
-        updateTimelinePos();
-        totalTimeEl.textContent = fmtTime(l1El.duration);
-      });
-      if (l1El.readyState >= 1) updateTimelinePos();
-
-      // Scrub — keep _scrubbing true briefly after mouseup to absorb stray timeupdate
-      let _scrubbing = false;
-      let _scrubEndTimer = null;
-      function seekFromEvent(e) {
-        const rect = timelineTrack.getBoundingClientRect();
-        const pct  = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-        if (l1El.duration) {
-          const t = pct * l1El.duration;
-          l1El.currentTime = t;
-          riEl.currentTime = t;
-          timelineFill.style.width = (pct * 100) + '%';
-          currentTimeEl.textContent = fmtTime(t);
+      ],
+      "text": "JO, 2025"
+    },
+    {
+      "id": "008",
+      "type": "loose",
+      "title": "Body Terrace",
+      "year": "2024",
+      "images": [
+        {
+          "src": "WORKimages/2024_Body_Terrace.jpg",
+          "width": 216,
+          "x": 3409,
+          "y": 510,
+          "mx": 1485,
+          "my": 476,
+          "mw": 186
         }
-      }
-      timelineHit.addEventListener('mousedown', e => {
-        clearTimeout(_scrubEndTimer);
-        _scrubbing = true;
-        seekFromEvent(e);
-        const onMove = e2 => { if (_scrubbing) seekFromEvent(e2); };
-        const onUp   = () => {
-          window.removeEventListener('mousemove', onMove);
-          window.removeEventListener('mouseup',   onUp);
-          _scrubEndTimer = setTimeout(() => { _scrubbing = false; }, 150);
-        };
-        window.addEventListener('mousemove', onMove);
-        window.addEventListener('mouseup',   onUp);
-      });
-
-      l1El.addEventListener('timeupdate', () => {
-        if (_scrubbing || !l1El.duration) return;
-        timelineFill.style.width = ((l1El.currentTime / l1El.duration) * 100) + '%';
-        currentTimeEl.textContent = fmtTime(l1El.currentTime);
-      });
-    }
-  });
-
-  if (item.text) {
-    // If the item has a video, always attach the label to it. Otherwise pick randomly.
-    const videoEntry = placed.find(p => /\.(mp4|mov|webm|ogg)$/i.test(p.src));
-    const target = videoEntry || placed[Math.floor(rand(0, placed.length))];
-    const labelX = Math.round(target.x + rand(0, target.width * 0.5));
-    const labelY = videoEntry
-      ? Math.round(target.y + rand(70, 110))
-      : Math.round(target.y + rand(10, 50));
-
-    const el       = document.createElement('div');
-    el.className   = 'surface-label';
-    el.textContent = item.text;
-    el.style.left  = labelX + 'px';
-    el.style.top   = labelY + 'px';
-    layer2.appendChild(el);
-    allLabels.push({ el, itemId: item.id });
-
-    if (item.link) {
-      const lx = IS_MOBILE ? (item.link.mlx !== undefined ? item.link.mlx : Math.round(item.link.x * MOB_X_SCALE)) : item.link.x;
-      const ly = IS_MOBILE ? (item.link.mly !== undefined ? item.link.mly : Math.round(item.link.y * MOB_Y_SCALE)) : item.link.y;
-      const linkEl = document.createElement('a');
-      linkEl.href        = item.link.href;
-      linkEl.target      = '_blank';
-      linkEl.rel         = 'noopener noreferrer';
-      linkEl.textContent = item.link.href.replace(/^https?:\/\//, '').replace(/\/$/, '');
-      Object.assign(linkEl.style, {
-        position:       'absolute',
-        left:           lx + 'px',
-        top:            ly + 'px',
-        fontFamily:     '"Lucida Grande", Verdana, Geneva, sans-serif',
-        fontSize:       '11px',
-        color:          '#333',
-        textDecoration: 'underline',
-        pointerEvents:  'auto',
-        cursor:         'pointer',
-      });
-      layer2.appendChild(linkEl);
-      allLabels.push({ el: linkEl, itemId: item.id });
-    }
-  }
-
-  // ── "read" button for ScreenShotThis (id 012) — reveals t001 text region ──
-  if (item.id === '012') {
-    const target = placed[0];
-    const readBtnX = Math.round(target.x + rand(0, target.width * 0.4));
-    const readBtnY = Math.round(target.y + rand(70, 110));
-
-    const readBtn = document.createElement('div');
-    readBtn.textContent = 'read';
-    Object.assign(readBtn.style, {
-      position:      'absolute',
-      fontFamily:    '"Lucida Grande", Verdana, Geneva, sans-serif',
-      fontSize:      '10px',
-      color:         '#333',
-      cursor:        'pointer',
-      userSelect:    'none',
-      pointerEvents: 'auto',
-      padding:       '10px 14px',
-      margin:        '-10px -14px',
-      whiteSpace:    'nowrap',
-    });
-    readBtn._absX = readBtnX;
-    readBtn._absY = readBtnY;
-
-    let _readRect    = null;
-    let _readTimeout = null;
-
-    readBtn.addEventListener('click', () => {
-      if (_readRect) {
-        clearTimeout(_readTimeout);
-        _readTimeout = null;
-        viewRects.delete(_readRect);
-        _readRect = null;
-        readBtn.textContent = 'read';
-        _frostDirty = true;
-        return;
-      }
-
-      // Get t001's current position and size from the DOM at click time
-      const t001 = allTexts.find(t => t.textId === 't001');
-      if (!t001) return;
-      const tx = parseFloat(t001.el.style.left);
-      const ty = parseFloat(t001.el.style.top);
-      const tw = t001.el.offsetWidth  || 420;
-      const th = t001.el.offsetHeight || 120;
-
-      _readRect = { x: tx, y: ty, w: tw, h: th };
-      viewRects.add(_readRect);
-      readBtn.textContent = 'close';
-      _frostDirty = true;
-
-      _readTimeout = setTimeout(() => {
-        viewRects.delete(_readRect);
-        _readRect = null;
-        _readTimeout = null;
-        readBtn.textContent = 'read';
-        _frostDirty = true;
-      }, 12000);
-    });
-
-    _btnOverlay.appendChild(readBtn);
-  }
-}
-
-// ── UpdateLog scatter layer ───────────────────────────────────────────────────
-// Zone centre where update entries are scattered (desktop surface coords).
-const UL_ZONE_X = 4830;
-const UL_ZONE_Y = 1284;
-
-function placeUpdateLog(entries) {
-  if (!entries || entries.length === 0) return;
-  entries.forEach((entry, i) => {
-    const rand     = makeRand(strToSeed('ul_' + i + '_' + entry.date));
-    const isLatest = i === 0;
-    let x = isLatest ? UL_ZONE_X : Math.round(UL_ZONE_X + rand(-220, 220));
-    let y = isLatest ? UL_ZONE_Y : Math.round(UL_ZONE_Y + rand(-160, 160));
-    if (IS_MOBILE) { x = Math.round(x * MOB_X_SCALE); y = Math.round(y * MOB_Y_SCALE); }
-    const rotation = rand(-5, 5);
-    const text = (isLatest ? 'last updated ' : '') + entry.date + (entry.note ? ' \u2014 ' + entry.note : '');
-    const el = document.createElement('div');
-    el.className      = 'surface-text';
-    el.dataset.textId = 'ul_' + i;
-    el.textContent    = text;
-    Object.assign(el.style, {
-      position:        'absolute',
-      left:            x + 'px',
-      top:             y + 'px',
-      fontFamily:      '"Lucida Grande", Arial, sans-serif',
-      fontSize:        isLatest ? '12px' : '10px',
-      color:           '#333',
-      opacity:         isLatest ? '0.65' : String(rand(0.25, 0.42).toFixed(2)),
-      whiteSpace:      'nowrap',
-      pointerEvents:   'none',
-      transform:       'rotate(' + rotation.toFixed(2) + 'deg)',
-      transformOrigin: 'left top',
-    });
-    _pendingL1.appendChild(el);
-    allTexts.push({ el, textId: 'ul_' + i });
-  });
-}
-
-// Fragments that collect all layer1/revealInner elements before they're shown.
-// Everything is appended to these until the final flush in waitResolveAndCache,
-// so the browser never paints a partial or pre-layout state.
-const _pendingL1 = document.createDocumentFragment();
-const _pendingRI = document.createDocumentFragment();
-
-// Returns the stage-coordinate centre of the landing item, plus ready-made
-// scrollLeft/scrollTop values. Falls back to surface centre if not yet placed.
-function _landingPos() {
-  const p = allPlaced.find(p => p.itemId === LANDING_ITEM_ID);
-  if (p) {
-    const ix = parseFloat(p.l1El.style.left);
-    const iy = parseFloat(p.l1El.style.top);
-    const iw = p.width;
-    const ih = p.l1El.offsetHeight || Math.round(iw * 1.3);
-    const cx = ix + iw / 2;
-    const cy = iy + ih / 2;
-    return {
-      cx,
-      cy,
-      left: cx * _currentScale - scrollWrap.clientWidth  / 2,
-      top:  cy * _currentScale - scrollWrap.clientHeight / 2,
-    };
-  }
-  return {
-    cx:   surfW / 2,
-    cy:   surfH / 2,
-    left: surfW / 2 - scrollWrap.clientWidth  / 2,
-    top:  surfH / 2 - scrollWrap.clientHeight / 2,
-  };
-}
-
-// ── Fetch content ─────────────────────────────────────────────────────────────
-fetch('content.json')
-  .then(r => {
-    if (!r.ok) throw new Error('Could not load content.json');
-    return r.json();
-  })
-  .then(data => {
-    if (IS_MOBILE) {
-      MOB_X_SCALE = MOB_SURF_W / data.surface_width;
-      MOB_Y_SCALE = MOB_SURF_H / data.surface_height;
-    }
-    surfW = IS_MOBILE ? MOB_SURF_W : data.surface_width;
-    surfH = IS_MOBILE ? MOB_SURF_H : data.surface_height;
-    maxSurfW = surfW;
-    maxSurfH = surfH;
-    const w = surfW + 'px';
-    const h = surfH + 'px';
-
-    for (const el of [stage, layer1, layer2]) {
-      el.style.width  = w;
-      el.style.height = h;
-    }
-    revealInner.style.width  = w;
-    revealInner.style.height = h;
-
-    const eW = Math.round(surfW * MEM_SCALE);
-    const eH = Math.round(surfH * MEM_SCALE);
-
-    erosionCanvas.width  = eW;
-    erosionCanvas.height = eH;
-    eCtx = erosionCanvas.getContext('2d');
-
-    frostCanvas.width        = eW;
-    frostCanvas.height       = eH;
-    frostCanvas.style.width  = w;
-    frostCanvas.style.height = h;
-    frostCtx = frostCanvas.getContext('2d');
-    drawFrost();
-    stage.style.visibility = '';
-    document.documentElement.style.visibility = 'visible';
-    updateSpacer();
-    if (IS_MOBILE) {
-      const _lp = _landingPos(); scrollWrap.scrollLeft = _lp.left; scrollWrap.scrollTop = _lp.top;
-    } else {
-      scrollWrap.scrollLeft = surfW / 2 * _currentScale - scrollWrap.clientWidth  / 2;
-      scrollWrap.scrollTop  = surfH / 2 * _currentScale - scrollWrap.clientHeight / 2;
-    }
-    _loadingEl.remove();
-    _spinStyle.remove();
-
-    data.items.forEach(placeItem);
-
-    // ── Text layer ────────────────────────────────────────────────────────────
-    // Text elements sit on layer1 (the sharp layer) at absolute positions.
-    // The frost covers them like images — the erosion cursor reveals them.
-    const fontSizes = { small: '11px', medium: '14px', large: '20px' };
-    (data.texts || []).forEach(t => {
-      const el = document.createElement('div');
-      el.className      = 'surface-text';
-      el.dataset.textId = t.id;
-      if (Array.isArray(t.lines)) {
-        el.innerHTML = t.lines.map(l => l.replace(/&/g,'&amp;').replace(/</g,'&lt;')).join('<br>');
-      } else {
-        el.textContent = t.content || '';
-      }
-      const tx = IS_MOBILE ? (t.mx !== undefined ? t.mx : Math.round(t.x * MOB_X_SCALE)) : t.x;
-      const ty = IS_MOBILE ? (t.my !== undefined ? t.my : Math.round(t.y * MOB_Y_SCALE)) : t.y;
-      Object.assign(el.style, {
-        position:      'absolute',
-        left:          tx + 'px',
-        top:           ty + 'px',
-        fontFamily:    '"Lucida Grande", Arial, sans-serif',
-        fontSize:      fontSizes[t.style] || '11px',
-        color:         '#333',
-        lineHeight:    t.lineHeight !== undefined ? String(t.lineHeight) : '1.5',
-        maxWidth:      ((IS_MOBILE && t.mMaxWidth) ? t.mMaxWidth + 'px' : (t.maxWidth ? t.maxWidth + 'px' : '160px')),
-        wordSpacing:   '3px',
-        textAlign:     t.align || 'left',
-        pointerEvents: 'none',
-      });
-      _pendingL1.appendChild(el);
-      allTexts.push({ el, textId: t.id });
-    });
-
-    // ── DUMPimages loader ─────────────────────────────────────────────────────
-    // Fetch DUMPimages/manifest.json, scatter images and .txt files across the
-    // stage alongside portfolio items. Positions are seeded by filename so they
-    // stay stable across reloads. Call waitResolveAndCache after all are placed.
-    Promise.all([
-      fetch('DUMPimages/manifest.json').then(r => r.ok ? r.json() : []).catch(() => []),
-      fetch('DUMPimages/mobile_positions.json').then(r => r.ok ? r.json() : {}).catch(() => ({})),
-      fetch('DUMPimages/desktop_positions.json').then(r => r.ok ? r.json() : {}).catch(() => ({})),
-    ]).then(([files, mobPos, deskPos]) => {
-        const imgExts = /\.(jpe?g|png|gif|webp|svg)$/i;
-        const txtExts = /\.txt$/i;
-        const imgFiles = files.filter(f => imgExts.test(f));
-        const txtFiles = files.filter(f => txtExts.test(f));
-
-        // Place images — grid-cell distribution so right/bottom are evenly covered.
-        // Divide the surface into a grid with one cell per image, then randomise
-        // position within each cell so images stay stable but spread evenly.
-        const surfaceW = IS_MOBILE ? MOB_SURF_W : data.surface_width;
-        const surfaceH = IS_MOBILE ? MOB_SURF_H : data.surface_height;
-        const cols = Math.ceil(Math.sqrt(imgFiles.length));
-        const rows = Math.ceil(imgFiles.length / cols);
-        const cellW = Math.floor(surfaceW / cols);
-        const cellH = Math.floor(surfaceH / rows);
-
-        imgFiles.forEach((filename, i) => {
-          const col   = i % cols;
-          const row   = Math.floor(i / cols);
-          const seed  = strToSeed('dump_' + filename);
-          const rand  = makeRand(seed);
-          const wBase = Math.round(rand(120, 240));
-          let w       = IS_MOBILE ? Math.round(wBase * MOB_IMG_SCALE) : wBase;
-          const pad   = 60;
-          let x, y;
-          if (IS_MOBILE && mobPos[filename]) {
-            x = mobPos[filename].mx;
-            y = mobPos[filename].my;
-            if (mobPos[filename].mw) w = mobPos[filename].mw;
-          } else if (!IS_MOBILE && deskPos[filename]) {
-            x = deskPos[filename].x;
-            y = deskPos[filename].y;
-            if (deskPos[filename].width) w = deskPos[filename].width;
-          } else if (IS_MOBILE) {
-            const estH  = Math.round(w * 1.3);
-            const TRIES = 12;
-            let bestX = Math.round(col * cellW + pad), bestY = Math.round(row * cellH + pad), bestDist = -1;
-            for (let t = 0; t < TRIES; t++) {
-              const cx = Math.round(col * cellW + rand(pad, Math.max(pad + 1, cellW - w - pad)));
-              const cy = Math.round(row * cellH + rand(pad, Math.max(pad + 1, cellH - estH - pad)));
-              let minDist = Infinity;
-              for (const p of allPlaced) {
-                const px = parseFloat(p.l1El.style.left), py = parseFloat(p.l1El.style.top);
-                const pw = p.width, ph = Math.round(pw * 1.3);
-                const dx = Math.max(0, Math.max(px, cx) - Math.min(px + pw, cx + w));
-                const dy = Math.max(0, Math.max(py, cy) - Math.min(py + ph, cy + estH));
-                minDist = Math.min(minDist, Math.hypot(dx, dy));
-              }
-              if (minDist > bestDist) { bestDist = minDist; bestX = cx; bestY = cy; }
-            }
-            x = bestX; y = bestY;
-          } else {
-            x = Math.round(col * cellW + rand(pad, Math.max(pad + 1, cellW - w - pad)));
-            y = Math.round(row * cellH + rand(pad, Math.max(pad + 1, cellH - 240 - pad)));
-          }
-          const src   = 'DUMPimages/' + filename;
-
-          function makeDumpEl() {
-            const el = document.createElement('img');
-            el.dataset.src    = src;  // lazy-loaded by shared observer
-            el.style.position = 'absolute';
-            el.style.left     = x + 'px';
-            el.style.top      = y + 'px';
-            el.style.width    = w + 'px';
-            el.style.height   = 'auto';
-            return el;
-          }
-          const l1El = makeDumpEl();
-          const riEl = makeDumpEl();
-          l1El._riEl = riEl;
-          _pendingL1.appendChild(l1El);
-          _pendingRI.appendChild(riEl);
-          allPlaced.push({ src, x, y, width: w, itemId: 'dump_' + filename, itemType: 'loose', l1El, riEl });
-        });
-
-        // Place text files — fetch content, render as surface-text at random pos.
-        const txtPromises = txtFiles.map(filename => {
-          const seed = strToSeed('dump_' + filename);
-          const rand = makeRand(seed);
-          const x    = Math.round(rand(80, (IS_MOBILE ? MOB_SURF_W : data.surface_width)  - 300));
-          const y    = Math.round(rand(80, (IS_MOBILE ? MOB_SURF_H : data.surface_height) - 200));
-          return fetch('DUMPimages/' + filename)
-            .then(r => r.ok ? r.text() : '')
-            .then(text => {
-              if (!text.trim()) return;
-              const el = document.createElement('div');
-              el.className      = 'surface-text';
-              el.dataset.textId = 'dump_' + filename;
-              el.textContent    = text.trim();
-              Object.assign(el.style, {
-                position:      'absolute',
-                left:          x + 'px',
-                top:           y + 'px',
-                fontFamily:    '"Lucida Grande", Arial, sans-serif',
-                fontSize:      '11px',
-                color:         '#333',
-                lineHeight:    '1.5',
-                maxWidth:      '280px',
-                pointerEvents: 'none',
-              });
-              _pendingL1.appendChild(el);
-              allTexts.push({ el, textId: 'dump_' + filename });
-            })
-            .catch(() => {});
-        });
-
-        const ulPromise = fetch('updatelog.json')
-          .then(r => r.ok ? r.json() : [])
-          .catch(() => [])
-          .then(entries => placeUpdateLog(entries));
-
-        Promise.all([...txtPromises, ulPromise]).then(() => {
-          // Pre-position scroll before elements appear so there's no visible jump.
-          if (IS_MOBILE) {
-            const _lp = _landingPos(); scrollWrap.scrollLeft = _lp.left; scrollWrap.scrollTop = _lp.top;
-          } else {
-            scrollWrap.scrollLeft = surfW / 2 * _currentScale - scrollWrap.clientWidth  / 2;
-            scrollWrap.scrollTop  = surfH / 2 * _currentScale - scrollWrap.clientHeight / 2;
-          }
-          // Flush all layer1/revealInner elements at once — final positions already set.
-          layer1.appendChild(_pendingL1);
-          revealInner.appendChild(_pendingRI);
-          drawTextsIntoFrost();
-
-          // Eager-load images near the landing position so they count toward
-          // the waitResolveAndCache load gate and appear without delay.
-          const lazyImgs = Array.from(layer1.querySelectorAll('img[data-src]'));
-          if (IS_MOBILE) {
-            // On mobile the scroll position may not be committed yet; use
-            // distance from the landing centre in stage coordinates instead.
-            const { cx: landingCX, cy: landingCY } = _landingPos();
-            lazyImgs
-              .map(el => {
-                const cx = parseFloat(el.style.left) + parseFloat(el.style.width) / 2;
-                const cy = parseFloat(el.style.top);
-                return { el, dist: Math.hypot(cx - landingCX, cy - landingCY) };
-              })
-              .sort((a, b) => a.dist - b.dist)
-              .slice(0, 12)
-              .forEach(({ el }) => {
-                el.src = el.dataset.src;
-                if (el._riEl) el._riEl.src = el.dataset.src;
-                delete el.dataset.src;
-                if (el.complete && el.naturalWidth > 0) {
-                  drawImageIntoFrost(el, parseFloat(el.style.width));
-                } else {
-                  el.addEventListener('load', () => drawImageIntoFrost(el, parseFloat(el.style.width)), { once: true });
-                }
-              });
-          } else {
-            const landingSL    = scrollWrap.scrollLeft;
-            const landingST    = scrollWrap.scrollTop;
-            const vw           = scrollWrap.clientWidth;
-            const vh           = scrollWrap.clientHeight;
-            const EAGER_MARGIN = 800;
-            const sc           = _currentScale;
-            lazyImgs.forEach(el => {
-              const ex = parseFloat(el.style.left) * sc - landingSL;
-              const ey = parseFloat(el.style.top)  * sc - landingST;
-              if (ex > -EAGER_MARGIN && ex < vw + EAGER_MARGIN &&
-                  ey > -EAGER_MARGIN && ey < vh + EAGER_MARGIN) {
-                el.src = el.dataset.src;
-                if (el._riEl) el._riEl.src = el.dataset.src;
-                delete el.dataset.src;
-                if (el.complete && el.naturalWidth > 0) {
-                  drawImageIntoFrost(el, parseFloat(el.style.width));
-                } else {
-                  el.addEventListener('load', () => drawImageIntoFrost(el, parseFloat(el.style.width)), { once: true });
-                }
-              }
-            });
-          }
-
-          // Shared lazy-load observer for all non-video images.
-          const lazyImgObserver = new IntersectionObserver((entries, obs) => {
-            entries.forEach(entry => {
-              if (!entry.isIntersecting) return;
-              const el = entry.target;
-              obs.unobserve(el);
-              if (!el.dataset.src) return;
-              const lazySrc = el.dataset.src;
-              el.src = lazySrc;
-              if (el._riEl) el._riEl.src = lazySrc;
-              delete el.dataset.src;
-              el.addEventListener('load', () => drawImageIntoFrost(el, parseFloat(el.style.width)), { once: true });
-            });
-          }, IS_MOBILE ? { rootMargin: '400px' } : { root: scrollWrap, rootMargin: '400px' });
-
-          layer1.querySelectorAll('img[data-src]').forEach(el => lazyImgObserver.observe(el));
-
-          drawFrost();
-          waitResolveAndCache();
-        });
-      });
-    // ── END DUMPimages loader ─────────────────────────────────────────────────
-  })
-  .catch(err => console.error('content.json error:', err.message));
-
-// ── Cursor mechanic ───────────────────────────────────────────────────────────
-const FIG_H   = 250;
-const FIG_SRC = 'Assets/BOB.png';
-let figW = 0;
-
-async function initCursor() {
-  const img = await new Promise((res, rej) => {
-    const i  = new Image();
-    i.onload  = () => res(i);
-    i.onerror = () => rej(new Error('Cannot load ' + FIG_SRC));
-    i.src = FIG_SRC;
-  }).catch(e => { console.warn(e.message); return null; });
-
-  if (!img) return;
-  figW = Math.round(img.naturalWidth * FIG_H / img.naturalHeight);
-
-  layer3.style.width  = figW + 'px';
-  layer3.style.height = FIG_H + 'px';
-
-  const maskUrl = `url("${FIG_SRC}")`;
-  layer3.style.webkitMaskImage    = maskUrl;
-  layer3.style.webkitMaskSize     = `${figW}px ${FIG_H}px`;
-  layer3.style.webkitMaskRepeat   = 'no-repeat';
-  layer3.style.webkitMaskPosition = '0 0';
-  layer3.style.maskImage          = maskUrl;
-  layer3.style.maskMode           = 'alpha';
-  layer3.style.maskSize           = `${figW}px ${FIG_H}px`;
-  layer3.style.maskRepeat         = 'no-repeat';
-  layer3.style.maskPosition       = '0 0';
-
-  // Skip on touch devices — taps fire synthetic mousemove that would teleport the figure.
-  if (!IS_MOBILE) {
-    document.addEventListener('mousemove',  e => { _lastMouseX = e.clientX; _lastMouseY = e.clientY; moveReveal(e.clientX, e.clientY); });
-    document.addEventListener('mouseleave', hideReveal);
-  }
-  // Touch listeners are added by MOBILE TOUCH FEATURE below
-}
-
-function moveReveal(clientX, clientY) {
-  if (!_pageReady) return;
-  // layer3 is position:fixed on body — position directly from viewport coords.
-  const z = _currentScale;
-
-  layer3.style.transform       = `translate(${clientX - figW / 2}px, ${clientY - FIG_H / 2}px) scale(${z})`;
-  layer3.style.transformOrigin = 'center';
-
-  // getBoundingClientRect reflects the visual position after CSS transform.
-  const rect    = layer1.getBoundingClientRect();
-  const visOffX = clientX - rect.left;
-  const visOffY = clientY - rect.top;
-
-  revealInner.style.transform = `translate(${figW / 2 - visOffX / z}px, ${FIG_H / 2 - visOffY / z}px)`;
-
-  applyMemory(visOffX / z, visOffY / z);
-}
-
-function hideReveal() {
-  layer3.style.transform = 'translate(-9999px, -9999px)';
-}
-
-initCursor();
-requestAnimationFrame(restoreLoop);
-document.addEventListener('visibilitychange', () => {
-  if (!document.hidden) {
-    rebuildErosion(performance.now());
-    drawFrost();
-  }
-});
-
-// ── Video autoplay fallback ───────────────────────────────────────────────────
-// Safari blocks autoplay until a user gesture. On each interaction, attempt
-// play() on every video. If a play() fails, the next interaction retries it.
-// Listeners are re-registered after each firing until all videos are playing.
-function tryPlayAllVideos() {
-  let anyBlocked = false;
-  document.querySelectorAll('video').forEach(v => {
-    if (!v.src) return;  // not yet lazy-loaded — skip
-    // Only attempt play on videos not explicitly paused by the user.
-    if (v.paused && !_manuallyPaused.has(v)) {
-      anyBlocked = true;
-      v.play().catch(() => {});
-    }
-  });
-  if (anyBlocked) registerVideoPlayListeners();
-}
-
-function registerVideoPlayListeners() {
-  document.addEventListener('mousemove', tryPlayAllVideos, { once: true });
-  document.addEventListener('click',     tryPlayAllVideos, { once: true });
-  document.addEventListener('touchstart',tryPlayAllVideos, { once: true, passive: true });
-}
-
-if (!IS_MOBILE) registerVideoPlayListeners();
-
-// ── Navigate to project cluster ───────────────────────────────────────────────
-function navigateToProject(itemId, excludeSrc) {
-  const entries = allPlaced.filter(p => p.itemId === itemId && p.src !== excludeSrc);
-  if (!entries.length) return;
-
-  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-  for (const p of entries) {
-    const px = parseFloat(p.l1El.style.left);
-    const py = parseFloat(p.l1El.style.top);
-    const pw = p.l1El.offsetWidth  || p.width;
-    const ph = p.l1El.offsetHeight || Math.round(p.width * 1.3);
-    minX = Math.min(minX, px);      minY = Math.min(minY, py);
-    maxX = Math.max(maxX, px + pw); maxY = Math.max(maxY, py + ph);
-  }
-
-  const cx = (minX + maxX) / 2;
-  const cy = (minY + maxY) / 2;
-  const targetScrollLeft = cx * _currentScale - scrollWrap.clientWidth  / 2;
-  const targetScrollTop  = cy * _currentScale - scrollWrap.clientHeight / 2;
-  scrollWrap.scrollTo({ left: targetScrollLeft, top: targetScrollTop, behavior: 'smooth' });
-}
-
-// ── Contact overlay ───────────────────────────────────────────────────────────
-const contactDiv = document.createElement('div');
-Object.assign(contactDiv.style, {
-  position:   'fixed',
-  top:        '10px',
-  left:       '10px',
-  zIndex:     '10',
-  fontFamily: '"Lucida Grande", Arial, sans-serif',
-  fontSize:   '12px',
-  color:      '#333',
-  lineHeight: '1.6',
-  pointerEvents: 'auto',
-});
-const gwLink = document.createElement('span');
-gwLink.textContent = 'Guest';
-Object.assign(gwLink.style, {
-  textDecoration: 'underline',
-  cursor:         'pointer',
-});
-gwLink.addEventListener('click', () => {
-  const gwEl = document.getElementById('guestweb-area');
-  if (!gwEl) return;
-
-  const gwX = parseFloat(gwEl.style.left) || 0;
-  const gwY = parseFloat(gwEl.style.top)  || 0;
-  const gwW = gwEl.offsetWidth  || 190;
-  const gwH = gwEl.offsetHeight || 120;
-
-  // Target: scale 1, centred on guestweb-area.
-  const targetScale      = Math.max(1, _currentScale);
-  const targetScrollLeft = gwX * targetScale + (gwW * targetScale) / 2 - scrollWrap.clientWidth  / 2;
-  const targetScrollTop  = gwY * targetScale + (gwH * targetScale) / 2 - scrollWrap.clientHeight / 2;
-
-  if (_currentScale >= 1) {
-    // Already at or above scale 1 — just scroll smoothly, no zoom change.
-    scrollWrap.scrollTo({ left: targetScrollLeft, top: targetScrollTop, behavior: 'smooth' });
-    return;
-  }
-
-  // Zoomed out — animate zoom + scroll simultaneously over ~1.5 s.
-  const DURATION        = 1500;
-  const startScale      = _currentScale;
-  const startScrollLeft = scrollWrap.scrollLeft;
-  const startScrollTop  = scrollWrap.scrollTop;
-  const startTime       = performance.now();
-
-  function easeInOut(t) {
-    return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
-  }
-
-  function animFrame(now) {
-    const raw = Math.min(1, (now - startTime) / DURATION);
-    const t   = easeInOut(raw);
-
-    const scale = startScale + (targetScale - startScale) * t;
-    const sl    = startScrollLeft + (targetScrollLeft - startScrollLeft) * t;
-    const st    = startScrollTop  + (targetScrollTop  - startScrollTop)  * t;
-
-    _currentScale = scale;
-    stage.style.transformOrigin = '0 0';
-    stage.style.transform       = 'scale(' + scale + ')';
-    updateSpacer();
-    scrollWrap.scrollLeft = sl;
-    scrollWrap.scrollTop  = st;
-    if (typeof _updateScaleBar === 'function') _updateScaleBar();
-
-    if (raw < 1) requestAnimationFrame(animFrame);
-  }
-
-  requestAnimationFrame(animFrame);
-});
-
-contactDiv.innerHTML = 'helenyzh, heleniyzh@gmail.com, London, ';
-contactDiv.appendChild(gwLink);
-document.body.appendChild(contactDiv);
-
-// ── Bookmark icon ─────────────────────────────────────────────────────────────
-(function () {
-  const bookmarkEl = document.createElement('div');
-  Object.assign(bookmarkEl.style, {
-    position:   'fixed',
-    top:        '10px',
-    right:      '10px',
-    zIndex:     '10',
-    fontFamily: '"Lucida Grande", Arial, sans-serif',
-    fontSize:   '18px',
-    color:      '#ccc',
-    cursor:     'pointer',
-    lineHeight: '1',
-    userSelect: 'none',
-    pointerEvents: 'auto',
-  });
-
-  function render(filled) {
-    bookmarkEl.innerHTML = filled
-      ? '<svg width="14" height="18" viewBox="0 0 14 18" fill="#333" xmlns="http://www.w3.org/2000/svg"><path d="M0 0h14v18l-7-5-7 5V0z"/></svg>'
-      : '<svg width="14" height="18" viewBox="0 0 14 18" fill="none" stroke="#333" stroke-width="1.5" xmlns="http://www.w3.org/2000/svg"><path d="M1 1h12v15.5l-6-4.3-6 4.3V1z"/></svg>';
-  }
-
-  // Detect bookmark state: use standalone display mode as a proxy for "added to home screen".
-  // There's no reliable cross-browser API to detect bookmarks; we store a flag in localStorage.
-  let isBookmarked = localStorage.getItem('hy_bookmarked') === '1';
-  render(isBookmarked);
-
-  bookmarkEl.title = isBookmarked ? 'Bookmarked' : 'Bookmark this site';
-
-  bookmarkEl.addEventListener('click', function () {
-    if (IS_MOBILE && navigator.share) {
-      navigator.share({ title: document.title, url: window.location.href }).catch(() => {});
-      return;
-    }
-    // Try legacy browser bookmark APIs
-    if (window.sidebar && window.sidebar.addPanel) {
-      window.sidebar.addPanel(document.title, location.href, '');
-      isBookmarked = true;
-    } else {
-      // Modern browsers don't allow programmatic bookmarking — show instructions
-      const isMac = /Mac|iPhone|iPad/.test(navigator.userAgent);
-      const shortcut = isMac ? '⌘+D' : 'Ctrl+D';
-      alert('Press ' + shortcut + ' to bookmark this page.');
-    }
-    if (isBookmarked) {
-      localStorage.setItem('hy_bookmarked', '1');
-      render(true);
-      bookmarkEl.title = 'Bookmarked';
-    }
-  });
-
-  document.body.appendChild(bookmarkEl);
-})();
-
-// ── Zoom button overlay ───────────────────────────────────────────────────────
-const ZOOM_BTN_SIZE   = 18;   // font size in px — adjust here
-const ZOOM_BTN_GAP    = 10;   // gap between + and − in px — adjust here
-const ZOOM_STEP       = 0.5; // scale change per click
-const ZOOM_BTN_LEFT   = 14;   // px from left edge — adjust here
-
-const zoomWrap = document.createElement('div');
-Object.assign(zoomWrap.style, {
-  position:      'fixed',
-  left:          ZOOM_BTN_LEFT + 'px',
-  top:           '50%',
-  transform:     'translateY(-50%)',
-  zIndex:        '10',
-  display:       'flex',
-  flexDirection: 'column',
-  alignItems:    'center',
-  gap:           ZOOM_BTN_GAP + 'px',
-  pointerEvents: 'auto',
-  fontFamily:    '"Lucida Grande", Arial, sans-serif',
-  fontSize:      ZOOM_BTN_SIZE + 'px',
-  color:         '#333',
-  userSelect:    'none',
-});
-
-// Smooth zoom — lerps _currentScale toward _targetScale each rAF frame.
-let _targetScale  = 1;
-let _zoomAnchorX  = 0;
-let _zoomAnchorY  = 0;
-let _zoomRafId    = null;
-
-function _zoomStep() {
-  try {
-    _zoomRafId = null;
-    const diff = _targetScale - _currentScale;
-    if (Math.abs(diff) < 0.0015) {
-      applyScale(_targetScale, _zoomAnchorX, _zoomAnchorY);
-      if (!IS_MOBILE) moveReveal(_lastMouseX, _lastMouseY);
-      return;
-    }
-    applyScale(_currentScale + diff * 0.1, _zoomAnchorX, _zoomAnchorY);
-    if (!IS_MOBILE) moveReveal(_lastMouseX, _lastMouseY);
-    _zoomRafId = requestAnimationFrame(_zoomStep);
-  } catch (err) {
-    console.error('[DBG] _zoomStep CRASHED:', err);
-  }
-}
-
-function _zoomFromCentre(newScale) {
-  const cx = scrollWrap.clientWidth  / 2;
-  const cy = scrollWrap.clientHeight / 2;
-  _zoomAnchorX = (scrollWrap.scrollLeft + cx) / _currentScale;
-  _zoomAnchorY = (scrollWrap.scrollTop  + cy) / _currentScale;
-  _targetScale = Math.max(IS_MOBILE ? 0.75 : getMinScale(), Math.min(IS_MOBILE ? 2 : 3, newScale));
-  if (_zoomRafId === null) _zoomRafId = requestAnimationFrame(_zoomStep);
-}
-
-const zoomInBtn = document.createElement('div');
-zoomInBtn.textContent = '+';
-Object.assign(zoomInBtn.style, {
-  cursor:              'pointer',
-  lineHeight:          '1',
-  fontSize:            IS_MOBILE ? Math.round(ZOOM_BTN_SIZE * 1.5) + 'px' : '',
-  padding:             IS_MOBILE ? '8px 10px' : '',
-  margin:              IS_MOBILE ? '-8px -10px' : '',
-  userSelect:          'none',
-  WebkitUserSelect:    'none',
-});
-zoomInBtn.addEventListener('click', () => {
-  if (IS_MOBILE) {
-    const snapped = Math.floor(_targetScale / 0.25) * 0.25;
-    _zoomFromCentre(snapped + 0.25);
-  } else {
-    const snapped = Math.floor(_targetScale / ZOOM_STEP) * ZOOM_STEP;
-    _zoomFromCentre(snapped + ZOOM_STEP);
-  }
-});
-
-// Scale bar
-const scaleBarWrap = document.createElement('div');
-Object.assign(scaleBarWrap.style, {
-  width:      '2px',
-  height:     '60px',
-  background: 'rgba(0,0,0,0.12)',
-  position:   'relative',
-});
-const scaleBarFill = document.createElement('div');
-Object.assign(scaleBarFill.style, {
-  position:   'absolute',
-  bottom:     '0',
-  left:       '0',
-  width:      '100%',
-  background: '#555',
-  transition: 'height 0.15s ease',
-});
-
-let scaleBarDot = null;
-
-if (IS_MOBILE) {
-  scaleBarWrap.style.width             = '30px';
-  scaleBarWrap.style.background        = 'transparent';
-  scaleBarWrap.style.height            = '120px';
-  scaleBarWrap.style.pointerEvents     = 'auto';
-  scaleBarWrap.style.cursor            = 'pointer';
-  scaleBarWrap.style.userSelect        = 'none';
-  scaleBarWrap.style.WebkitUserSelect  = 'none';
-  scaleBarWrap.style.touchAction       = 'none';
-
-  const innerTrack = document.createElement('div');
-  Object.assign(innerTrack.style, {
-    position:   'absolute',
-    left:       '50%',
-    transform:  'translateX(-50%)',
-    width:      '2px',
-    height:     '100%',
-    background: 'rgba(0,0,0,0.12)',
-  });
-  innerTrack.appendChild(scaleBarFill);
-  scaleBarWrap.appendChild(innerTrack);
-
-  scaleBarDot = document.createElement('div');
-  Object.assign(scaleBarDot.style, {
-    position:      'absolute',
-    left:          '50%',
-    transform:     'translateX(-50%)',
-    width:         '10px',
-    height:        '10px',
-    borderRadius:  '50%',
-    background:    '#555',
-    pointerEvents: 'none',
-    bottom:        '0',
-  });
-  scaleBarWrap.appendChild(scaleBarDot);
-} else {
-  scaleBarWrap.appendChild(scaleBarFill);
-}
-
-function _updateScaleBar() {
-  const min = IS_MOBILE ? 0.75 : getMinScale();
-  const max = IS_MOBILE ? 2 : 3;
-  const pct = Math.max(0, Math.min(1, (_currentScale - min) / (max - min)));
-  scaleBarFill.style.height = Math.round(pct * 100) + '%';
-  if (scaleBarDot) scaleBarDot.style.bottom = Math.round(pct * 100) + '%';
-}
-
-const zoomOutBtn = document.createElement('div');
-zoomOutBtn.textContent = '−';
-Object.assign(zoomOutBtn.style, {
-  cursor:              'pointer',
-  lineHeight:          '1',
-  fontSize:            IS_MOBILE ? Math.round(ZOOM_BTN_SIZE * 1.5) + 'px' : '',
-  padding:             IS_MOBILE ? '8px 10px' : '',
-  margin:              IS_MOBILE ? '-8px -10px' : '',
-  userSelect:          'none',
-  WebkitUserSelect:    'none',
-});
-zoomOutBtn.addEventListener('click', () => {
-  console.log('[DBG] zoom-out button clicked | _currentScale before:', _currentScale);
-  if (IS_MOBILE && _targetScale <= 0.75) return;
-  try {
-    if (IS_MOBILE) {
-      const snapped = Math.ceil(_targetScale / 0.25) * 0.25;
-      _zoomFromCentre(snapped - 0.25);
-    } else {
-      const snapped = Math.ceil(_targetScale / ZOOM_STEP) * ZOOM_STEP;
-      _zoomFromCentre(snapped - ZOOM_STEP);
-    }
-  } catch (err) {
-    console.error('[DBG] zoom-out CRASHED:', err);
-  }
-});
-
-zoomWrap.appendChild(zoomInBtn);
-zoomWrap.appendChild(scaleBarWrap);
-zoomWrap.appendChild(zoomOutBtn);
-if (!IS_MOBILE) {
-  zoomWrap.style.background    = 'rgba(240,238,235,0.6)';
-  zoomWrap.style.borderRadius  = '4px';
-  zoomWrap.style.padding       = '6px 4px';
-}
-document.body.appendChild(zoomWrap);
-
-// Show UI chrome immediately.
-document.documentElement.style.visibility = 'visible';
-
-const _loadingEl = document.createElement('div');
-Object.assign(_loadingEl.style, {
-  position: 'fixed',
-  top: '50%',
-  left: '50%',
-  transform: 'translate(-50%, -50%)',
-  width: '20px',
-  height: '20px',
-  border: '2px solid rgba(0,0,0,0.08)',
-  borderTopColor: '#aaa',
-  borderRadius: '50%',
-  zIndex: '5',
-  pointerEvents: 'none',
-  animation: '_spin 0.8s linear infinite',
-});
-
-const _spinStyle = document.createElement('style');
-_spinStyle.textContent = '@keyframes _spin { to { transform: translate(-50%, -50%) rotate(360deg); } }';
-document.head.appendChild(_spinStyle);
-document.body.appendChild(_loadingEl);
-
-setTimeout(_updateScaleBar, 800);
-
-// ── MOBILE ZOOM SCALE INDICATOR ───────────────────────────────────────────────
-// Small "×1.5" label to the right of zoom buttons, visible on mobile only.
-// Shown immediately on button click, fades out 1.5 s after last click.
-if (IS_MOBILE) {
-  const _zoomLabel = document.createElement('div');
-  Object.assign(_zoomLabel.style, {
-    position:   'fixed',
-    left:       (ZOOM_BTN_LEFT + 20) + 'px',
-    top:        '50%',
-    transform:  'translateY(-50%)',
-    zIndex:     '10',
-    fontFamily: '"Lucida Grande", Verdana, Geneva, sans-serif',
-    fontSize:   '11px',
-    color:      '#aaa',
-    opacity:    '0',
-    transition: 'opacity 0.3s ease',
-    pointerEvents: 'none',
-    whiteSpace: 'nowrap',
-  });
-  document.body.appendChild(_zoomLabel);
-
-  let _zoomLabelTimer = null;
-
-  function _showZoomLabel() {
-    const mult = Math.round(_targetScale / 1.0 * 4) / 4;
-    _zoomLabel.textContent = '×' + (Number.isInteger(mult) ? mult : mult.toFixed(2));
-    _zoomLabel.style.opacity = '1';
-    clearTimeout(_zoomLabelTimer);
-    _zoomLabelTimer = setTimeout(() => { _zoomLabel.style.opacity = '0'; }, 1500);
-  }
-
-  zoomInBtn.addEventListener('click',  _showZoomLabel);
-  zoomOutBtn.addEventListener('click', _showZoomLabel);
-
-  scaleBarWrap.addEventListener('click', e => {
-    const rect = scaleBarWrap.getBoundingClientRect();
-    const pct  = 1 - (e.clientY - rect.top) / rect.height;
-    const min  = 0.75, max = 2;
-    _zoomFromCentre(min + pct * (max - min));
-    _showZoomLabel();
-  });
-
-  let _barDragging = false;
-  scaleBarWrap.addEventListener('touchstart', e => {
-    e.preventDefault();
-    e.stopPropagation();
-    _barDragging = true;
-  }, { passive: false });
-  scaleBarWrap.addEventListener('touchmove', e => {
-    if (!_barDragging) return;
-    e.preventDefault();
-    e.stopPropagation();
-    const t    = e.touches[0];
-    const rect = scaleBarWrap.getBoundingClientRect();
-    const pct  = Math.max(0, Math.min(1, 1 - (t.clientY - rect.top) / rect.height));
-    const min  = 0.75, max = 2;
-    _zoomFromCentre(min + pct * (max - min));
-    _showZoomLabel();
-  }, { passive: false });
-  scaleBarWrap.addEventListener('touchend', () => { _barDragging = false; }, { passive: true });
-}
-// ── END MOBILE ZOOM SCALE INDICATOR ──────────────────────────────────────────
-
-// ── DESKTOP ZOOM SCALE INDICATOR ─────────────────────────────────────────────
-if (!IS_MOBILE) {
-  const _desktopZoomLabel = document.createElement('div');
-  Object.assign(_desktopZoomLabel.style, {
-    position:   'fixed',
-    left:       (ZOOM_BTN_LEFT + 20) + 'px',
-    top:        '50%',
-    transform:  'translateY(-50%)',
-    zIndex:     '10',
-    fontFamily: '"Lucida Grande", Verdana, Geneva, sans-serif',
-    fontSize:   '11px',
-    color:      '#aaa',
-    opacity:    '0',
-    transition: 'opacity 0.3s ease',
-    pointerEvents: 'none',
-    whiteSpace: 'nowrap',
-  });
-  document.body.appendChild(_desktopZoomLabel);
-
-  let _desktopZoomLabelTimer = null;
-
-  function _showDesktopZoomLabel() {
-    const mult = Math.round(_targetScale * 4) / 4;
-    _desktopZoomLabel.textContent = '×' + (Number.isInteger(mult) ? mult : mult.toFixed(2));
-    _desktopZoomLabel.style.opacity = '1';
-    clearTimeout(_desktopZoomLabelTimer);
-    _desktopZoomLabelTimer = setTimeout(() => { _desktopZoomLabel.style.opacity = '0'; }, 1500);
-  }
-
-  zoomInBtn.addEventListener('click',  _showDesktopZoomLabel);
-  zoomOutBtn.addEventListener('click', _showDesktopZoomLabel);
-}
-// ── END DESKTOP ZOOM SCALE INDICATOR ─────────────────────────────────────────
-
-// ── MOBILE SCROLL INDICATORS ──────────────────────────────────────────────────
-// Horizontal bar: top-centre — shows left/right progress.
-// Vertical bar:   right-centre — shows up/down progress.
-// Both match the scale bar visual: 2px track, rgba fill, #555 fill, 0.15s ease.
-if (IS_MOBILE) {
-  const hScrollTrack = document.createElement('div');
-  Object.assign(hScrollTrack.style, {
-    position:      'fixed',
-    top:           '36px',
-    left:          '50%',
-    transform:     'translateX(-50%)',
-    width:         '60px',
-    height:        '2px',
-    background:    'rgba(0,0,0,0.12)',
-    zIndex:        '10',
-    pointerEvents: 'none',
-  });
-  const hScrollFill = document.createElement('div');
-  Object.assign(hScrollFill.style, {
-    position:   'absolute',
-    top:        '0',
-    left:       '0',
-    height:     '100%',
-    width:      '0%',
-    background: '#555',
-    transition: 'width 0.15s ease',
-  });
-  hScrollTrack.appendChild(hScrollFill);
-  document.body.appendChild(hScrollTrack);
-
-  const vScrollTrack = document.createElement('div');
-  Object.assign(vScrollTrack.style, {
-    position:      'fixed',
-    right:         '14px',
-    top:           '50%',
-    transform:     'translateY(-50%)',
-    width:         '2px',
-    height:        '60px',
-    background:    'rgba(0,0,0,0.12)',
-    zIndex:        '10',
-    pointerEvents: 'none',
-  });
-  const vScrollFill = document.createElement('div');
-  Object.assign(vScrollFill.style, {
-    position:   'absolute',
-    top:        '0',
-    left:       '0',
-    width:      '100%',
-    height:     '0%',
-    background: '#555',
-    transition: 'height 0.15s ease',
-  });
-  vScrollTrack.appendChild(vScrollFill);
-  document.body.appendChild(vScrollTrack);
-
-  function _updateScrollBars() {
-    const maxLeft = scrollWrap.scrollWidth  - scrollWrap.clientWidth;
-    const maxTop  = scrollWrap.scrollHeight - scrollWrap.clientHeight;
-    const hPct = maxLeft > 0 ? Math.max(0, Math.min(1, scrollWrap.scrollLeft / maxLeft)) : 0;
-    const vPct = maxTop  > 0 ? Math.max(0, Math.min(1, scrollWrap.scrollTop  / maxTop))  : 0;
-    hScrollFill.style.width  = Math.round(hPct * 100) + '%';
-    vScrollFill.style.height = Math.round(vPct * 100) + '%';
-  }
-
-  scrollWrap.addEventListener('scroll', _updateScrollBars, { passive: true });
-  setTimeout(_updateScrollBars, 800);
-}
-// ── END MOBILE SCROLL INDICATORS ─────────────────────────────────────────────
-
-// ── MOBILE TOUCH FEATURE ──────────────────────────────────────────────────────
-// 1-finger touch: drags the figure. Page does not scroll. Erosion trail active.
-//   Figure stays at release position when finger lifts.
-// 2-finger touch: scrolls the page normally (browser default).
-//   Figure stays fixed at its last position; revealInner re-syncs on scroll.
-//
-// Hint: on first mobile visit this session, show "drag to look, two fingers to
-//   scroll" at bottom-centre after 2 s. Fade in 1 s, hold 3 s, fade out 1 s.
-//   Stored in sessionStorage so it only shows once per session.
-
-const mob_pos = { x: 0, y: 0 };  // current viewport position of figure centre
-
-function mob_initPosition() {
-  const vw = window.innerWidth;
-  const vh = window.innerHeight;
-
-  // Snap figure to Car Nour image on load.
-  if (allPlaced.length > 0 && figW > 0) {
-    const sl = scrollWrap.scrollLeft;
-    const st = scrollWrap.scrollTop;
-
-    const target = allPlaced.find(p => p.itemId === '013') || null;
-    if (target) {
-      const ix = parseFloat(target.l1El.style.left) + target.width / 2;
-      const iy = parseFloat(target.l1El.style.top)  + (target.l1El.offsetHeight || Math.round(target.width * 1.3)) / 2;
-      mob_pos.x = Math.max(figW / 4, Math.min(vw - figW / 4, ix * _currentScale - sl));
-      mob_pos.y = Math.max(FIG_H / 4, Math.min(vh - FIG_H / 4, iy * _currentScale - st));
-      moveReveal(mob_pos.x, mob_pos.y);
-      return;
-    }
-  }
-
-  mob_pos.x = vw / 2;
-  mob_pos.y = vh / 2;
-  moveReveal(mob_pos.x, mob_pos.y);
-}
-
-// Re-sync reveal offset when the page scrolls under the stationary figure.
-function mob_onScroll() {
-  moveReveal(mob_pos.x, mob_pos.y);
-}
-
-function mob_showHint() {
-  const hint = document.createElement('div');
-  hint.innerHTML = 'drag figure to look<br>scroll to navigate<br><span id="mob-hint-pc"></span>';
-  Object.assign(hint.style, {
-    position:      'fixed',
-    bottom:        '32px',
-    left:          '50%',
-    transform:     'translateX(-50%)',
-    fontFamily:    '"Lucida Grande", Verdana, Geneva, sans-serif',
-    fontSize:      '11px',
-    color:         '#aaa',
-    opacity:       '0',
-    transition:    'opacity 1s ease',
-    zIndex:        '100',
-    pointerEvents: 'none',
-    textAlign:     'center',
-  });
-  document.body.appendChild(hint);
-
-  setTimeout(() => {
-    hint.style.opacity = '1';
-    setTimeout(() => {
-      hint.style.opacity = '0';
-      hint.addEventListener('transitionend', () => hint.remove(), { once: true });
-    }, 1000 + 3000);
-  }, 2000);
-}
-
-if ('ontouchstart' in window) {
-  // Enable pointer events on layer3 so it can receive touch.
-  layer3.style.pointerEvents = 'auto';
-
-  function _overGuestWeb(clientX, clientY) {
-    const gwEl = document.getElementById('guestweb-area');
-    if (!gwEl) return false;
-    const r = gwEl.getBoundingClientRect();
-    return clientX >= r.left && clientX <= r.right && clientY >= r.top && clientY <= r.bottom;
-  }
-
-  let _mobDragOffX    = 0;
-  let _mobDragOffY    = 0;
-  let _figDragActive  = false;
-  let _velX = 0, _velY = 0;
-  let _prevT = 0, _prevX = 0, _prevY = 0;
-  let _currT = 0, _currX = 0, _currY = 0;
-  let _momentumRaf    = null;
-
-  function _stopMomentum() {
-    if (_momentumRaf !== null) { cancelAnimationFrame(_momentumRaf); _momentumRaf = null; }
-  }
-
-  function _startMomentum() {
-    _stopMomentum();
-    const FRICTION = 0.90;
-    const MIN_VEL  = 0.4;
-    function step() {
-      _velX *= FRICTION;
-      _velY *= FRICTION;
-      if (Math.abs(_velX) < MIN_VEL && Math.abs(_velY) < MIN_VEL) { _momentumRaf = null; return; }
-      mob_pos.x += _velX;
-      mob_pos.y += _velY;
-      mob_pos.x = Math.max(figW / 4, Math.min(window.innerWidth  - figW / 4, mob_pos.x));
-      mob_pos.y = Math.max(FIG_H / 4, Math.min(window.innerHeight - FIG_H / 4, mob_pos.y));
-      moveReveal(mob_pos.x, mob_pos.y);
-      _momentumRaf = requestAnimationFrame(step);
-    }
-    _momentumRaf = requestAnimationFrame(step);
-  }
-
-  // Drag only starts when touchstart lands on the figure (layer3).
-  layer3.addEventListener('touchstart', e => {
-    if (e.touches.length !== 1) return;
-    const t = e.touches[0];
-    if (_overGuestWeb(t.clientX, t.clientY)) {
-      layer3.style.pointerEvents = 'none';
-      return;
-    }
-    e.preventDefault();
-    _stopMomentum();
-    _figDragActive = true;
-    _velX = 0; _velY = 0;
-    _mobDragOffX = mob_pos.x - t.clientX;
-    _mobDragOffY = mob_pos.y - t.clientY;
-    _prevT = _currT = performance.now();
-    _prevX = _currX = t.clientX;
-    _prevY = _currY = t.clientY;
-  }, { passive: false });
-
-  layer3.addEventListener('touchmove', e => {
-    if (e.touches.length !== 1 || !_figDragActive) return;
-    const t = e.touches[0];
-    if (_overGuestWeb(t.clientX, t.clientY)) return;
-    e.preventDefault();
-    _prevT = _currT; _prevX = _currX; _prevY = _currY;
-    _currT = performance.now(); _currX = t.clientX; _currY = t.clientY;
-    mob_pos.x = t.clientX + _mobDragOffX;
-    mob_pos.y = t.clientY + _mobDragOffY;
-    mob_pos.x = Math.max(figW / 4, Math.min(window.innerWidth  - figW / 4, mob_pos.x));
-    mob_pos.y = Math.max(FIG_H / 4, Math.min(window.innerHeight - FIG_H / 4, mob_pos.y));
-    moveReveal(mob_pos.x, mob_pos.y);
-  }, { passive: false });
-
-  // Restore layer3 pointer-events when a touch begins outside guestweb-area.
-  document.addEventListener('touchstart', e => {
-    if (layer3.style.pointerEvents === 'none') {
-      const t = e.touches[0];
-      if (!_overGuestWeb(t.clientX, t.clientY)) {
-        layer3.style.pointerEvents = 'auto';
-      }
-    }
-  }, { passive: true, capture: true });
-
-  // On release: compute velocity from last two tracked points and start momentum.
-  layer3.addEventListener('touchend', () => {
-    if (!_figDragActive) return;
-    _figDragActive = false;
-    const dt = _currT - _prevT;
-    if (dt > 0 && dt < 120) {
-      _velX = (_currX - _prevX) / dt * 16;  // scale to ~60fps frame delta
-      _velY = (_currY - _prevY) / dt * 16;
-      const speed = Math.hypot(_velX, _velY);
-      const MAX   = 35;
-      if (speed > MAX) { _velX *= MAX / speed; _velY *= MAX / speed; }
-      _startMomentum();
-    }
-  }, { passive: true });
-
-  scrollWrap.addEventListener('scroll', mob_onScroll, { passive: true });
-
-  // Place figure at centre once figW is available (initCursor is async).
-  const mob_waitForFigW = setInterval(() => {
-    if (figW > 0 && _pageReady) {
-      clearInterval(mob_waitForFigW);
-      mob_initPosition();
-    }
-  }, 50);
-
-  // Show hint immediately (it has its own 2 s internal delay).
-  // Decoupled from figW so it fires even if the figure image is slow to load.
-  mob_showHint();
-}
-// ── END MOBILE TOUCH FEATURE ─────────────────────────────────────────────────
-
-// ── ZOOM (non-Safari only) ────────────────────────────────────────────────────
-// ── ZOOM (transform scale, all browsers) ─────────────────────────────────────
-// _currentScale declared at top of file so _syncOverlayBtns can access it.
-let _lastMouseX = window.innerWidth / 2;
-let _lastMouseY = window.innerHeight / 2;
-
-function getMinScale() {
-  const refW = surfW || maxSurfW || 5400;
-  const refH = surfH || maxSurfH || 3900;
-  return Math.max(scrollWrap.clientWidth / refW, scrollWrap.clientHeight / refH) + 0.01;
-}
-
-function updateSpacer() {
-  spacer.style.width  = Math.round(Math.max(surfW * _currentScale, scrollWrap.clientWidth))  + 'px';
-  spacer.style.height = Math.round(Math.max(surfH * _currentScale, scrollWrap.clientHeight)) + 'px';
-}
-
-function applyScale(newScale, stageX, stageY) {
-  // stageX/stageY are unscaled stage coordinates — anchor point stays fixed.
-  // Round scroll values to integers to avoid sub-pixel jiggle between layers.
-  const newScrollLeft = Math.round(stageX * (newScale - _currentScale) + scrollWrap.scrollLeft);
-  const newScrollTop  = Math.round(stageY * (newScale - _currentScale) + scrollWrap.scrollTop);
-
-  _currentScale = newScale;
-  stage.style.transformOrigin = '0 0';
-  stage.style.transform       = newScale !== 1 ? 'scale(' + newScale + ')' : '';
-  updateSpacer();
-
-  scrollWrap.scrollLeft = newScrollLeft;
-  scrollWrap.scrollTop  = newScrollTop;
-  if (typeof _updateScaleBar === 'function') _updateScaleBar();
-  _syncOverlayBtns();
-}
-
-// Block native browser pinch/ctrl-scroll zoom on all browsers.
-document.addEventListener('wheel', function(e) {
-  if (e.ctrlKey) e.preventDefault();
-}, { passive: false });
-// Gesture events (Safari desktop) — disabled on mobile to avoid double-handling with touch pinch.
-let _gestureScale0 = 1;
-if (!IS_MOBILE) {
-  document.addEventListener('gesturestart', function(e) {
-    e.preventDefault();
-    _gestureScale0 = _currentScale;
-  }, { passive: false });
-
-  document.addEventListener('gesturechange', function(e) {
-    e.preventDefault();
-    try {
-      const min      = getMinScale();
-      const newScale = Math.min(3, Math.max(min, _gestureScale0 * e.scale));
-      if (!isFinite(newScale) || newScale < min) return;
-      const originX  = (scrollWrap.scrollLeft + e.clientX) / _currentScale;
-      const originY  = (scrollWrap.scrollTop  + e.clientY) / _currentScale;
-      applyScale(newScale, originX, originY);
-      _targetScale = newScale;
-      moveReveal(_lastMouseX, _lastMouseY);
-    } catch (err) {
-      // swallow
-    }
-  }, { passive: false });
-
-  document.addEventListener('gestureend', function(e) {
-    e.preventDefault();
-  }, { passive: false });
-}
-
-// Ctrl+scroll zoom.
-document.addEventListener('wheel', function(e) {
-  if (!e.ctrlKey) return;
-  e.preventDefault();
-
-  const delta    = e.deltaY > 0 ? -0.05 : 0.05;
-  const newScale = Math.min(3, Math.max(getMinScale(), _currentScale + delta));
-  // Cursor in unscaled stage coordinates.
-  const originX  = (scrollWrap.scrollLeft + e.clientX) / _currentScale;
-  const originY  = (scrollWrap.scrollTop  + e.clientY) / _currentScale;
-
-  applyScale(newScale, originX, originY);
-  _targetScale = newScale;
-  moveReveal(_lastMouseX, _lastMouseY);
-}, { passive: false });
-
-// Touch pinch zoom — desktop only. On mobile, two-finger touch falls through to native scroll.
-if (!IS_MOBILE) {
-  let _pinchDist0 = null;
-  let _pinchScale0 = 1;
-  let _pinchMidX = 0;
-  let _pinchMidY = 0;
-  let _pinchRafPending = false;
-
-  document.addEventListener('touchstart', function(e) {
-    if (e.touches.length === 2) {
-      const t0 = e.touches[0], t1 = e.touches[1];
-      _pinchDist0  = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
-      if (_pinchDist0 < 10) { _pinchDist0 = null; return; }
-      _pinchScale0 = _currentScale;
-      const midX = (t0.clientX + t1.clientX) / 2;
-      const midY = (t0.clientY + t1.clientY) / 2;
-      _pinchMidX = (scrollWrap.scrollLeft + midX) / _currentScale;
-      _pinchMidY = (scrollWrap.scrollTop  + midY) / _currentScale;
-    }
-  }, { passive: true });
-
-  document.addEventListener('touchmove', function(e) {
-    if (e.touches.length !== 2 || _pinchDist0 === null) return;
-    e.preventDefault();
-    if (_pinchRafPending) return;
-    const t0 = e.touches[0], t1 = e.touches[1];
-    const dist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
-    if (!dist || dist < 10) return;
-    const snapMidX = _pinchMidX, snapMidY = _pinchMidY;
-    const snapDist = dist;
-    _pinchRafPending = true;
-    requestAnimationFrame(() => {
-      _pinchRafPending = false;
-      try {
-        const min      = getMinScale();
-        const raw      = _pinchScale0 * (snapDist / _pinchDist0);
-        const newScale = Math.min(3, Math.max(min, raw));
-        if (!isFinite(newScale) || newScale <= 0 || newScale < min) return;
-        applyScale(newScale, snapMidX, snapMidY);
-        _targetScale = newScale;
-      } catch (err) {
-        // swallow — never let a zoom calc crash the page
-      }
-    });
-  }, { passive: false });
-
-  document.addEventListener('touchend', function(e) {
-    if (e.touches.length < 2) {
-      _pinchDist0 = null;
-      _pinchRafPending = false;
-    }
-  }, { passive: true });
-}
-// Clamp scale when window is resized — desktop only.
-// On mobile, min scale is fixed after layout and must not be recalculated.
-if (!IS_MOBILE) {
-  window.addEventListener('resize', function() {
-    updateSpacer();
-    const min = getMinScale();
-    if (_currentScale < min && min !== _currentScale) {
-      applyScale(min, surfW / 2, surfH / 2);
-    }
-  });
-}
-// ── END ZOOM ──────────────────────────────────────────────────────────────────
-
-// ── Desktop drag-to-pan ───────────────────────────────────────────────────────
-if (!IS_MOBILE) {
-  scrollWrap.style.cursor = 'grab';
-  let _dragging       = false;
-  let _dragStartX     = 0;
-  let _dragStartY     = 0;
-  let _dragScrollLeft = 0;
-  let _dragScrollTop  = 0;
-
-  function _stageCoords(e) {
-    const rect = scrollWrap.getBoundingClientRect();
-    return {
-      x: (e.clientX - rect.left + scrollWrap.scrollLeft) / _currentScale,
-      y: (e.clientY - rect.top  + scrollWrap.scrollTop)  / _currentScale,
-    };
-  }
-
-  function _navImgAt(stageX, stageY) {
-    const navImgs = Array.from(layer1.querySelectorAll('img[data-clicknav]'));
-    for (const el of navImgs) {
-      const ix = parseFloat(el.style.left);
-      const iy = parseFloat(el.style.top);
-      const iw = el.offsetWidth  || parseFloat(el.style.width) || 80;
-      const ih = el.offsetHeight || Math.round(iw * 1.3);
-      if (stageX >= ix && stageX <= ix + iw && stageY >= iy && stageY <= iy + ih) return el;
-    }
-    return null;
-  }
-
-  scrollWrap.addEventListener('mousemove', e => {
-    if (_dragging) return;
-    const { x, y } = _stageCoords(e);
-    scrollWrap.style.cursor = _navImgAt(x, y) ? 'pointer' : 'grab';
-  });
-
-  let _dragMoved = false;
-
-  scrollWrap.addEventListener('mousedown', e => {
-    if (e.button !== 0) return;
-    _dragMoved = false;
-    if (e.target.closest('button, a, input, video, select, textarea')) return;
-    const { x, y } = _stageCoords(e);
-    if (_navImgAt(x, y)) return;
-    _dragging       = true;
-    document.body.style.userSelect = 'none';
-    document.body.style.WebkitUserSelect = 'none';
-    _dragStartX     = e.clientX;
-    _dragStartY     = e.clientY;
-    _dragScrollLeft = scrollWrap.scrollLeft;
-    _dragScrollTop  = scrollWrap.scrollTop;
-    scrollWrap.style.cursor = 'grabbing';
-  });
-
-  scrollWrap.addEventListener('click', e => {
-    if (_dragMoved) return;
-    const { x, y } = _stageCoords(e);
-    const el = _navImgAt(x, y);
-    if (!el) return;
-    const entry = allPlaced.find(p => p.l1El === el);
-    if (entry) navigateToProject(entry.itemId, entry.src);
-  });
-
-  window.addEventListener('mousemove', e => {
-    if (!_dragging) return;
-    e.preventDefault();
-    _dragMoved = true;
-    scrollWrap.scrollLeft = _dragScrollLeft - (e.clientX - _dragStartX);
-    scrollWrap.scrollTop  = _dragScrollTop  - (e.clientY - _dragStartY);
-  });
-
-  window.addEventListener('mouseup', () => {
-    if (!_dragging) return;
-    _dragging = false;
-    document.body.style.userSelect = '';
-    document.body.style.WebkitUserSelect = '';
-    scrollWrap.style.cursor = 'grab';
-  });
-}
-// ── END Desktop drag-to-pan ───────────────────────────────────────────────────
-
-// ── Preview / Design mode ─────────────────────────────────────────────────────
-// Press P to toggle. While active: all placed images are draggable and
-// have a resize handle. Press P or C to exit — positions are logged to
-// console as JSON keyed by src path, ready to copy into content.json.
-(function () {
-  let _previewActive = false;
-  const _cleanup = [];
-
-  function _enter() {
-    _previewActive = true;
-
-    const indicator = document.createElement('div');
-    Object.assign(indicator.style, {
-      position:      'fixed',
-      top:           '10px',
-      right:         '40px',
-      zIndex:        '9999',
-      fontFamily:    '"Lucida Grande", Arial, sans-serif',
-      fontSize:      '11px',
-      color:         '#555',
-      background:    'rgba(255,255,160,0.9)',
-      padding:       '2px 8px',
-      borderRadius:  '3px',
-      pointerEvents: 'none',
-      userSelect:    'none',
-    });
-    indicator.textContent = 'PREVIEW  —  P or C to exit + log';
-    document.body.appendChild(indicator);
-    _cleanup.push(() => indicator.remove());
-
-    frostCanvas.style.display = 'none';
-    _cleanup.push(() => { frostCanvas.style.display = ''; });
-
-    allTexts.forEach(({ el }) => {
-      const overlay = document.createElement('div');
-      Object.assign(overlay.style, {
-        position:  'absolute',
-        zIndex:    '51',
-        boxSizing: 'border-box',
-        border:    '1px dashed rgba(100,100,200,0.5)',
-        cursor:    'move',
-        minWidth:  '10px',
-        minHeight: '10px',
-      });
-      function syncTextOverlay() {
-        overlay.style.left   = el.style.left;
-        overlay.style.top    = el.style.top;
-        overlay.style.width  = (el.offsetWidth  || 60) + 'px';
-        overlay.style.height = (el.offsetHeight || 20) + 'px';
-      }
-      syncTextOverlay();
-      layer1.appendChild(overlay);
-      _cleanup.push(() => overlay.remove());
-
-      overlay.addEventListener('mousedown', e => {
-        e.preventDefault();
-        e.stopPropagation();
-        const sx = e.clientX, sy = e.clientY;
-        const ox = parseFloat(el.style.left), oy = parseFloat(el.style.top);
-        const onMove = e2 => {
-          const nx = Math.round(ox + (e2.clientX - sx) / _currentScale);
-          const ny = Math.round(oy + (e2.clientY - sy) / _currentScale);
-          el.style.left = nx + 'px'; el.style.top = ny + 'px';
-          syncTextOverlay();
-        };
-        const onUp = () => {
-          window.removeEventListener('mousemove', onMove);
-          window.removeEventListener('mouseup',   onUp);
-        };
-        window.addEventListener('mousemove', onMove);
-        window.addEventListener('mouseup',   onUp);
-      });
-    });
-
-    allPlaced.forEach(({ l1El, riEl }) => {
-      const getW = () => Math.round(parseFloat(l1El.style.width) || 100);
-      const getH = () => l1El.offsetHeight || Math.round(getW() * 0.75);
-
-      const overlay = document.createElement('div');
-      Object.assign(overlay.style, {
-        position:  'absolute',
-        zIndex:    '50',
-        boxSizing: 'border-box',
-        border:    '1px dashed rgba(100,100,100,0.4)',
-        cursor:    'move',
-      });
-
-      function syncOverlay() {
-        overlay.style.left   = l1El.style.left;
-        overlay.style.top    = l1El.style.top;
-        overlay.style.width  = getW() + 'px';
-        overlay.style.height = getH() + 'px';
-      }
-      syncOverlay();
-      layer1.appendChild(overlay);
-      _cleanup.push(() => overlay.remove());
-
-      const rz = document.createElement('div');
-      Object.assign(rz.style, {
-        position:   'absolute',
-        right:      '0',
-        bottom:     '0',
-        width:      '10px',
-        height:     '10px',
-        background: 'rgba(80,80,80,0.55)',
-        cursor:     'se-resize',
-      });
-      overlay.appendChild(rz);
-
-      // Drag
-      overlay.addEventListener('mousedown', e => {
-        if (e.target === rz) return;
-        e.preventDefault();
-        e.stopPropagation();
-        const sx = e.clientX, sy = e.clientY;
-        const ox = parseFloat(l1El.style.left), oy = parseFloat(l1El.style.top);
-        const onMove = e2 => {
-          const nx = Math.round(ox + (e2.clientX - sx) / _currentScale);
-          const ny = Math.round(oy + (e2.clientY - sy) / _currentScale);
-          l1El.style.left = nx + 'px'; l1El.style.top = ny + 'px';
-          if (riEl) { riEl.style.left = nx + 'px'; riEl.style.top = ny + 'px'; }
-          syncOverlay();
-        };
-        const onUp = () => {
-          window.removeEventListener('mousemove', onMove);
-          window.removeEventListener('mouseup',   onUp);
-        };
-        window.addEventListener('mousemove', onMove);
-        window.addEventListener('mouseup',   onUp);
-      });
-
-      // Resize
-      rz.addEventListener('mousedown', e => {
-        e.preventDefault();
-        e.stopPropagation();
-        const sx = e.clientX, ow = getW();
-        const onMove = e2 => {
-          const nw = Math.max(20, Math.round(ow + (e2.clientX - sx) / _currentScale));
-          l1El.style.width = nw + 'px';
-          if (riEl) riEl.style.width = nw + 'px';
-          syncOverlay();
-        };
-        const onUp = () => {
-          window.removeEventListener('mousemove', onMove);
-          window.removeEventListener('mouseup',   onUp);
-        };
-        window.addEventListener('mousemove', onMove);
-        window.addEventListener('mouseup',   onUp);
-      });
-    });
-  }
-
-  function _log() {
-    if (IS_MOBILE) {
-      // WORKimages → mx/my/mw for content.json
-      // mw is stored pre-halve so mobilizeImage(* MOB_IMG_SCALE) reproduces the current size.
-      const workOut = {};
-      const dumpOut = {};
-      allPlaced.forEach(({ l1El, src, itemId }) => {
-        const mx = Math.round(parseFloat(l1El.style.left));
-        const my = Math.round(parseFloat(l1El.style.top));
-        const rw = Math.round(parseFloat(l1El.style.width));
-        if (itemId && itemId.startsWith('dump_')) {
-          // DUMPimages: mw used directly, no halving
-          const filename = src.split('/').pop();
-          dumpOut[filename] = { mx, my, mw: rw };
-        } else {
-          // WORKimages: mobilizeImage halves mw, so store rw * 2
-          workOut[src] = { mx, my, mw: rw * 2 };
+      ],
+      "text": null
+    },
+    {
+      "id": "009",
+      "type": "found",
+      "title": "Safety Bag",
+      "year": 2024,
+      "images": [
+        {
+          "src": "WORKimages/2024_Safety_1.jpg",
+          "width": 413,
+          "x": 385,
+          "y": 1964,
+          "mx": 484,
+          "my": 1507,
+          "mw": 310
+        },
+        {
+          "src": "WORKimages/2024_Safety_2.jpg",
+          "width": 135,
+          "x": 429,
+          "y": 1712,
+          "mx": 502,
+          "my": 1452,
+          "mw": 162
         }
-      });
-      console.log('WORKimages (content.json mx/my/mw):', JSON.stringify(workOut, null, 2));
-      console.log('DUMPimages (mobile_positions.json mx/my/mw):', JSON.stringify(dumpOut, null, 2));
-      const textOut = {};
-      allTexts.forEach(({ el, textId }) => {
-        textOut[textId] = {
-          mx: Math.round(parseFloat(el.style.left)),
-          my: Math.round(parseFloat(el.style.top)),
-        };
-      });
-      console.log('texts (mx/my):', JSON.stringify(textOut, null, 2));
-    } else {
-      const out = {};
-      allPlaced.forEach(({ l1El, src }) => {
-        out[src] = {
-          x:     Math.round(parseFloat(l1El.style.left)),
-          y:     Math.round(parseFloat(l1El.style.top)),
-          width: Math.round(parseFloat(l1El.style.width)),
-        };
-      });
-      console.log(JSON.stringify(out, null, 2));
-      const textOut = {};
-      allTexts.forEach(({ el, textId }) => {
-        textOut[textId] = {
-          x: Math.round(parseFloat(el.style.left)),
-          y: Math.round(parseFloat(el.style.top)),
-        };
-      });
-      console.log('texts:', JSON.stringify(textOut, null, 2));
+      ],
+      "text": "Poppy Morgan's Safety Belts, 2024"
+    },
+    {
+      "id": "010",
+      "type": "project",
+      "title": "Fishy",
+      "year": "2024",
+      "images": [
+        {
+          "src": "WORKimages/2024_Fishy_1.jpg",
+          "width": 234,
+          "x": 2587,
+          "y": 1850,
+          "mx": 1178,
+          "my": 1896,
+          "mw": 222
+        },
+        {
+          "src": "WORKimages/2024_Fishy_2.jpg",
+          "width": 148,
+          "x": 2512,
+          "y": 2401,
+          "mx": 1178,
+          "my": 2197,
+          "mw": 166
+        },
+        {
+          "src": "WORKimages/2024_Fishy_3.jpg",
+          "width": 100,
+          "x": 2272,
+          "y": 2831,
+          "mx": 1036,
+          "my": 2096,
+          "mw": 212
+        },
+        {
+          "src": "WORKimages/2024_Fishy_4.jpg",
+          "width": 290,
+          "x": 2296,
+          "y": 2223,
+          "mx": 920,
+          "my": 2074,
+          "mw": 218
+        },
+        {
+          "src": "WORKimages/2024_Fishy_5.jpg",
+          "width": 148,
+          "x": 2140,
+          "y": 2606,
+          "mx": 1116,
+          "my": 2164,
+          "mw": 206
+        }
+      ],
+      "text": "Fishy, 2024"
+    },
+    {
+      "id": "011",
+      "type": "project",
+      "title": "Main Cut",
+      "year": "2023",
+      "images": [
+        {
+          "src": "WORKimages/2023_Main_cut.jpg",
+          "width": 498,
+          "x": 3183,
+          "y": 2921,
+          "mx": 1794,
+          "my": 1537,
+          "mw": 356
+        }
+      ],
+      "text": "Main Cuts, 2023"
+    },
+    {
+      "id": "012",
+      "type": "project",
+      "title": "ScreenShotThis",
+      "year": "2025",
+      "images": [
+        {
+          "src": "WORKimages/2025_ScreenShotThis_1.jpg",
+          "width": 154,
+          "x": 3379,
+          "y": 2022,
+          "mx": 1614,
+          "my": 1370,
+          "mw": 232
+        },
+        {
+          "src": "WORKimages/2025_ScreenShotThis_2.jpg",
+          "width": 80,
+          "x": 1522,
+          "y": 1579,
+          "mx": 1382,
+          "my": 1468,
+          "mw": 218
+        },
+        {
+          "src": "WORKimages/2025_ScreenShotThis_Gif.gif",
+          "width": 239,
+          "x": 3148,
+          "y": 1821,
+          "mx": 1496,
+          "my": 1303,
+          "mw": 218
+        }
+      ],
+      "text": "Screen Shot This, 2025"
+    },
+    {
+      "id": "013",
+      "type": "project",
+      "title": "Car Nour",
+      "year": "2026",
+      "images": [
+        {
+          "src": "WORKimages/2026_Car_Nour.png",
+          "width": 305,
+          "x": 1849,
+          "y": 1378,
+          "mx": 1024,
+          "my": 1520,
+          "mw": 332
+        }
+      ],
+      "text": "Car Nour, 2026"
+    },
+    {
+      "id": "015",
+      "type": "video",
+      "title": "Chanel Window",
+      "year": "2025",
+      "images": [
+        {
+          "src": "WORKimages/2025_Chanel_window.mp4",
+          "width": 381,
+          "x": 1074,
+          "y": 1281,
+          "mx": 815,
+          "my": 710,
+          "mw": 334
+        }
+      ],
+      "text": "Chanel Window, 2025"
+    },
+    {
+      "id": "016",
+      "type": "video",
+      "title": "Communistagram",
+      "year": "2024",
+      "images": [
+        {
+          "src": "WORKimages/2024_Communistagram.mp4",
+          "width": 768,
+          "x": 4236,
+          "y": 2264,
+          "mx": 400,
+          "my": 1748,
+          "mw": 668
+        }
+      ],
+      "text": "Communistagram, 2024"
+    },
+    {
+      "id": "017",
+      "type": "video",
+      "title": "Birthlook Reveal",
+      "year": "2025",
+      "images": [
+        {
+          "src": "WORKimages/2025_BirthLookReveal.mp4",
+          "width": 400,
+          "x": 3100,
+          "y": 1259,
+          "mx": 1595,
+          "my": 801,
+          "mw": 556
+        },
+        {
+          "src": "WORKimages/2025_Birthlook_1.jpeg",
+          "width": 308,
+          "x": 3537,
+          "y": 1436,
+          "mx": 1726,
+          "my": 638,
+          "mw": 222
+        },
+        {
+          "src": "WORKimages/2025_Birthlook_2.jpeg",
+          "width": 164,
+          "x": 3498,
+          "y": 1304,
+          "mx": 1837,
+          "my": 1002,
+          "mw": 228
+        },
+        {
+          "src": "WORKimages/2025_Birthlook_3.jpeg",
+          "width": 128,
+          "x": 1108,
+          "y": 2876,
+          "mx": 1857,
+          "my": 1184,
+          "mw": 178
+        }
+      ],
+      "text": "Birthlook Reveal,2025"
+    },
+    {
+      "id": "018",
+      "type": "project",
+      "title": "Oscar Ouyang SS26 BTS for iD",
+      "year": "2026",
+      "images": [
+        {
+          "src": "WORKimages/2025_Ouyang_ss26_bts_hy-1.jpg",
+          "width": 176,
+          "x": 246,
+          "y": 2856,
+          "mx": 1533,
+          "my": 2242,
+          "mw": 188
+        },
+        {
+          "src": "WORKimages/2025_Ouyang_ss26_bts_hy-2.jpg",
+          "width": 168,
+          "x": 424,
+          "y": 2868,
+          "mx": 1815,
+          "my": 2247,
+          "mw": 176
+        },
+        {
+          "src": "WORKimages/2025_Ouyang_ss26_bts_hy-5.jpg",
+          "width": 144,
+          "x": -1,
+          "y": 2904,
+          "mx": 1762,
+          "my": 2348,
+          "mw": 146
+        }
+      ],
+      "text": "Oscar Ouyang SS26 BTS for i-D, 2025",
+      "link": {
+        "href": "https://i-d.co/article/oscar-ouyang-spring-2026/",
+        "x": 200,
+        "y": 3450,
+        "mlx": 200,
+        "mly": 2400
+      }
     }
-  }
-
-  function _exit() {
-    _previewActive = false;
-    _log();
-    _cleanup.forEach(fn => fn());
-    _cleanup.length = 0;
-  }
-
-  document.addEventListener('keydown', e => {
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-    if (e.key === 'p' || e.key === 'P') { _previewActive ? _exit() : _enter(); }
-    else if ((e.key === 'c' || e.key === 'C') && _previewActive) { _exit(); }
-  });
-})();
-// ── END Preview / Design mode ─────────────────────────────────────────────────
+  ],
+  "texts": [
+    {
+      "id": "t001",
+      "lines": [
+        "An iPhone 13 phone size flip book. Flippable both ways.",
+        "Flip content contains: a scroll through 10 self made instagram reels in 5 seconds;",
+        "a future alphabet definition, and many others.",
+        "It's a book you can just flip through, but you can also stop and read every page.",
+        "This is my comment on the speed of consumption of image books these days,",
+        "how it is being reshaped by our interaction with phones.",
+        "Side by side I hope to discuss about reproduction, originality and lineality,",
+        "that exist in these two mediums.",
+        "Together I bring them into this fragile object that gets reshaped and reformed by every single flip.",
+        "Book launch event at Waste Store London, 10th Dec, 2024"
+      ],
+      "maxWidth": 500,
+      "align": "center",
+      "lineHeight": 0.8,
+      "x": 3480,
+      "y": 1941,
+      "mx": 1377,
+      "my": 1670,
+      "style": "small"
+    },
+    {
+      "id": "t002",
+      "content": "",
+      "x": 1440,
+      "y": 400,
+      "mx": 984,
+      "my": 1556,
+      "style": "large"
+    },
+    {
+      "id": "t003",
+      "content": "",
+      "x": 2000,
+      "y": 1520,
+      "mx": 1113,
+      "my": 2274,
+      "style": "medium"
+    },
+    {
+      "id": "t004",
+      "lines": [
+        "© 2026.",
+        "You are viewing a surface. What lies beneath it is protected. What you leave on top of it is not.",
+        "Looking is encouraged but not guaranteed. By being here you agree that looking is an act and not all acts are reversible. Scrolling constitutes agreement.",
+        " This site changes. Things move, appear, and disappear. Things might not be where it was."
+      ],
+      "maxWidth": 600,
+      "mMaxWidth": 220,
+      "align": "center",
+      "lineHeight": 0.8,
+      "x": 1130,
+      "y": 2522,
+      "style": "small",
+      "mx": 1452,
+      "my": 2200
+    }
+  ]
+}
