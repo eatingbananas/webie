@@ -407,7 +407,6 @@ function waitResolveAndCache() {
     for (const p of allPlaced) {
       const x = parseFloat(p.l1El.style.left);
       const y = parseFloat(p.l1El.style.top);
-      if (IS_MOBILE && (x > MOB_SURF_W - 50 || y > MOB_SURF_H - 100)) continue;
       const w = p.l1El.offsetWidth  || p.width;
       const h = p.l1El.offsetHeight || Math.round(p.width * 1.3);
       bx1 = Math.max(bx1, x + w);   by1 = Math.max(by1, y + h);
@@ -415,7 +414,6 @@ function waitResolveAndCache() {
     for (const t of allTexts) {
       const x = parseFloat(t.el.style.left);
       const y = parseFloat(t.el.style.top);
-      if (IS_MOBILE && (x > MOB_SURF_W - 50 || y > MOB_SURF_H - 100)) continue;
       const w = t.el.offsetWidth  || 0;
       const h = t.el.offsetHeight || 0;
       bx1 = Math.max(bx1, x + w);   by1 = Math.max(by1, y + h);
@@ -463,20 +461,15 @@ function waitResolveAndCache() {
     // Only the stage dimensions and the spacer (which drives scrollWrap's
     // scroll range) are clamped so the user cannot scroll to blank space.
     if (IS_MOBILE) {
-      const narrowW = Math.round(Math.max(bx1 + 20, MOB_SURF_W));
-      const narrowH = Math.round(Math.max(by1 + 300, MOB_SURF_H));
-      surfW = narrowW;  // keep updateSpacer() in sync so scroll never exceeds stage right edge
-      surfH = narrowH;  // clamp to content bottom so empty space below is not scrollable
-      stage.style.width     = narrowW + 'px';
-      stage.style.height    = narrowH + 'px';
+      surfW = MOB_SURF_W;
+      surfH = MOB_SURF_H;
+      stage.style.width     = MOB_SURF_W + 'px';
+      stage.style.height    = MOB_SURF_H + 'px';
       stage.style.overflowX = 'hidden';
       stage.style.overflowY = 'hidden';
-      // Override the spacer so scrollWrap's scrollable area matches exactly.
-      spacer.style.width  = narrowW + 'px';
-      spacer.style.height = narrowH + 'px';
+      spacer.style.width  = MOB_SURF_W + 'px';
+      spacer.style.height = MOB_SURF_H + 'px';
 
-      // Reposition GuestWeb (created by the module in index.html) to fit
-      // within the narrowed canvas.
       const _posGW = () => {
         const gwEl = document.getElementById('guestweb-area');
         if (!gwEl) return;
@@ -484,8 +477,7 @@ function waitResolveAndCache() {
         gwEl.style.top  = '2000px';
       };
       setTimeout(_posGW, 0);
-      setTimeout(_posGW, 600);  // retry after Firebase entries may have shifted layout
-
+      setTimeout(_posGW, 600);
     }
     _pageReady = true;
     _btnOverlay.style.visibility = '';
