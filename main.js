@@ -407,6 +407,7 @@ function waitResolveAndCache() {
     for (const p of allPlaced) {
       const x = parseFloat(p.l1El.style.left);
       const y = parseFloat(p.l1El.style.top);
+      if (IS_MOBILE && (x > MOB_SURF_W - 50 || y > MOB_SURF_H - 100)) continue;
       const w = p.l1El.offsetWidth  || p.width;
       const h = p.l1El.offsetHeight || Math.round(p.width * 1.3);
       bx1 = Math.max(bx1, x + w);   by1 = Math.max(by1, y + h);
@@ -414,6 +415,7 @@ function waitResolveAndCache() {
     for (const t of allTexts) {
       const x = parseFloat(t.el.style.left);
       const y = parseFloat(t.el.style.top);
+      if (IS_MOBILE && (x > MOB_SURF_W - 50 || y > MOB_SURF_H - 100)) continue;
       const w = t.el.offsetWidth  || 0;
       const h = t.el.offsetHeight || 0;
       bx1 = Math.max(bx1, x + w);   by1 = Math.max(by1, y + h);
@@ -1127,7 +1129,7 @@ function placeUpdateLog(entries) {
       fontSize:        isLatest ? '12px' : '10px',
       color:           '#333',
       opacity:         isLatest ? '0.65' : String(rand(0.25, 0.42).toFixed(2)),
-      whiteSpace:      'nowrap',
+      maxWidth:        '180px',
       pointerEvents:   'none',
       transform:       'rotate(' + rotation.toFixed(2) + 'deg)',
       transformOrigin: 'left top',
