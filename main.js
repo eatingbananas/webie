@@ -1112,7 +1112,7 @@ function placeUpdateLog(entries) {
     const isLatest = i === 0;
     let x = isLatest ? UL_ZONE_X : Math.round(UL_ZONE_X + rand(-220, 220));
     let y = isLatest ? UL_ZONE_Y : Math.round(UL_ZONE_Y + rand(-160, 160));
-    if (IS_MOBILE) { x = Math.round(x * MOB_X_SCALE) - 100; y = Math.round(y * MOB_Y_SCALE) - 50; }
+    if (IS_MOBILE) { x = Math.round(x * MOB_X_SCALE) - (isLatest ? 200 : 100); y = Math.round(y * MOB_Y_SCALE) - 50; }
     const rotation = rand(-5, 5);
     const text = (isLatest ? 'last updated ' : '') + entry.date + (entry.note ? ' \u2014 ' + entry.note : '');
     const el = document.createElement('div');
