@@ -2098,8 +2098,8 @@ function mob_initPosition() {
     if (target) {
       const ix = parseFloat(target.l1El.style.left) + target.width / 2;
       const iy = parseFloat(target.l1El.style.top)  + (target.l1El.offsetHeight || Math.round(target.width * 1.3)) / 2;
-      mob_pos.x = Math.max(figW / 4, Math.min(vw - figW / 4, ix * _currentScale - sl));
-      mob_pos.y = Math.max(FIG_H / 4, Math.min(vh - FIG_H / 4, iy * _currentScale - st));
+      mob_pos.x = Math.max(figW / 8, Math.min(vw - figW / 8, ix * _currentScale - sl));
+      mob_pos.y = Math.max(FIG_H / 8, Math.min(vh - FIG_H / 8, iy * _currentScale - st));
       moveReveal(mob_pos.x, mob_pos.y);
       return;
     }
@@ -2176,8 +2176,8 @@ if ('ontouchstart' in window) {
       if (Math.abs(_velX) < MIN_VEL && Math.abs(_velY) < MIN_VEL) { _momentumRaf = null; return; }
       mob_pos.x += _velX;
       mob_pos.y += _velY;
-      mob_pos.x = Math.max(figW / 4, Math.min(window.innerWidth  - figW / 4, mob_pos.x));
-      mob_pos.y = Math.max(FIG_H / 4, Math.min(window.innerHeight - FIG_H / 4, mob_pos.y));
+      mob_pos.x = Math.max(figW / 8, Math.min(window.innerWidth  - figW / 8, mob_pos.x));
+      mob_pos.y = Math.max(FIG_H / 8, Math.min(window.innerHeight - FIG_H / 8, mob_pos.y));
       moveReveal(mob_pos.x, mob_pos.y);
       _momentumRaf = requestAnimationFrame(step);
     }
@@ -2212,8 +2212,8 @@ if ('ontouchstart' in window) {
     _currT = performance.now(); _currX = t.clientX; _currY = t.clientY;
     mob_pos.x = t.clientX + _mobDragOffX;
     mob_pos.y = t.clientY + _mobDragOffY;
-    mob_pos.x = Math.max(figW / 4, Math.min(window.innerWidth  - figW / 4, mob_pos.x));
-    mob_pos.y = Math.max(FIG_H / 4, Math.min(window.innerHeight - FIG_H / 4, mob_pos.y));
+    mob_pos.x = Math.max(figW / 8, Math.min(window.innerWidth  - figW / 8, mob_pos.x));
+    mob_pos.y = Math.max(FIG_H / 8, Math.min(window.innerHeight - FIG_H / 8, mob_pos.y));
     moveReveal(mob_pos.x, mob_pos.y);
   }, { passive: false });
 
