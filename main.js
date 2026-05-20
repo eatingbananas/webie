@@ -646,7 +646,7 @@ const IS_MOBILE = window.innerWidth < 768 ||
   new URLSearchParams(window.location.search).has('mob');
 // Mobile surface dimensions.
 const MOB_SURF_W = 2200;
-const MOB_SURF_H = 3500;
+const MOB_SURF_H = 2650;
 
 // Scale factors — set in the fetch handler once data.surface_width/height are known.
 // mobilizeImage() uses these to remap desktop coordinates to mobile space.
