@@ -49,6 +49,7 @@ html, body {
   left: 0;
   width: 4320px;
   height: 3120px;
+  min-height: 100%;
   background: #f0eeeb;
 }
 
