@@ -73,3 +73,7 @@ html, body {
   font-size: 11px;
   color: #333;
 }
+
+@media (max-width: 767px) {
+  #stage { background: #f0eeeb; }
+}
