@@ -1,0 +1,909 @@
+<!doctype html>
+<title>Portfolio Admin</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+/* ── Design tokens ──────────────────────────────────────────────────────────────
+   Layout: fixed header + two-column body (sidebar list | scrollable form+canvas)
+   Palette: warm neutrals pulled from the site (#f0eeeb) + ink accent
+   ─────────────────────────────────────────────────────────────────────────── */
+:root {
+  --bg:          #f0eeeb;
+  --surface:     #ffffff;
+  --surface-alt: #f7f6f3;
+  --border:      #dedad4;
+  --border-soft: #eae8e3;
+  --text:        #1a1917;
+  --text-2:      #6b6762;
+  --text-3:      #a09c97;
+  --accent:      #2347e0;
+  --accent-dim:  rgba(35,71,224,.08);
+  --danger:      #c53030;
+  --canvas-bg:    #f0eeeb;
+  --canvas-outer: #c8c4be;
+  --radius:      5px;
+  --radius-sm:   3px;
+  --font:        system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:        ui-monospace,"SF Mono","Cascadia Code",monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg:          #1b1a17;
+    --surface:     #242320;
+    --surface-alt: #2d2c28;
+    --border:      #38362f;
+    --border-soft: #302f2a;
+    --text:        #e5e0d8;
+    --text-2:      #9b9690;
+    --text-3:      #6a6660;
+    --accent:      #6b8fff;
+    --accent-dim:  rgba(107,143,255,.1);
+    --danger:       #f07070;
+    --canvas-bg:    #2c2b27;
+    --canvas-outer: #0e0d0b;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg:          #1b1a17;
+  --surface:     #242320;
+  --surface-alt: #2d2c28;
+  --border:      #38362f;
+  --border-soft: #302f2a;
+  --text:        #e5e0d8;
+  --text-2:      #9b9690;
+  --text-3:      #6a6660;
+  --accent:      #6b8fff;
+  --accent-dim:  rgba(107,143,255,.1);
+  --danger:       #f07070;
+  --canvas-bg:    #2c2b27;
+  --canvas-outer: #0e0d0b;
+  color-scheme: dark;
+}
+
+/* ── Reset ────────────────────────────────────────────────────────────────── */
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+html,body { height:100%; background:var(--bg); color:var(--text); font-family:var(--font); font-size:13px; }
+body { display:flex; flex-direction:column; overflow:hidden; }
+
+/* ── Header ───────────────────────────────────────────────────────────────── */
+#header {
+  display:flex; align-items:center; gap:10px;
+  height:44px; padding:0 14px; flex-shrink:0;
+  background:var(--surface); border-bottom:1px solid var(--border);
+}
+#header-title { font-size:13px; font-weight:600; letter-spacing:-.01em; margin-right:auto; }
+#folder-name  { font-size:12px; color:var(--text-2); font-family:var(--mono); max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+#save-status  { font-size:12px; color:var(--text-3); min-width:55px; text-align:right; }
+
+/* ── Buttons ──────────────────────────────────────────────────────────────── */
+.btn {
+  display:inline-flex; align-items:center; gap:5px;
+  padding:5px 11px; border:1px solid var(--border); border-radius:var(--radius);
+  background:var(--surface); color:var(--text); cursor:pointer;
+  font:inherit; font-size:12px; white-space:nowrap; transition:background .1s;
+}
+.btn:hover:not(:disabled) { background:var(--surface-alt); }
+.btn:disabled { opacity:.4; cursor:default; }
+.btn-primary { background:var(--text); color:var(--surface); border-color:var(--text); }
+.btn-primary:hover:not(:disabled) { opacity:.82; background:var(--text); }
+.btn-danger { color:var(--danger); border-color:var(--danger); background:transparent; }
+.btn-danger:hover:not(:disabled) { background:rgba(197,48,48,.06); }
+
+/* ── App layout ───────────────────────────────────────────────────────────── */
+#layout { display:flex; flex:1; overflow:hidden; }
+
+/* ── Sidebar ──────────────────────────────────────────────────────────────── */
+#sidebar {
+  width:220px; flex-shrink:0;
+  background:var(--surface); border-right:1px solid var(--border);
+  display:flex; flex-direction:column; overflow:hidden;
+}
+#sidebar-head {
+  padding:10px 12px 8px; flex-shrink:0;
+  font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase;
+  color:var(--text-3); border-bottom:1px solid var(--border-soft);
+}
+#project-list { flex:1; overflow-y:auto; }
+.proj-row {
+  display:flex; align-items:baseline; gap:6px;
+  padding:8px 12px; cursor:pointer; border-bottom:1px solid var(--border-soft);
+  transition:background .07s;
+}
+.proj-row:hover            { background:var(--surface-alt); }
+.proj-row.active           { background:var(--accent-dim); }
+.proj-row.active .proj-id  { color:var(--accent); }
+.proj-id   { font-size:10px; font-family:var(--mono); color:var(--text-3); min-width:26px; flex-shrink:0; }
+.proj-name { font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; }
+.proj-type { font-size:10px; color:var(--text-3); flex-shrink:0; }
+#sidebar-footer { padding:10px; border-top:1px solid var(--border-soft); flex-shrink:0; }
+
+/* ── Main scroll area ─────────────────────────────────────────────────────── */
+#main { flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:14px; padding:14px; min-width:0; }
+
+/* ── Cards ────────────────────────────────────────────────────────────────── */
+.card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; }
+.card-label {
+  font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase;
+  color:var(--text-3); margin-bottom:12px; display:block;
+}
+
+/* ── Form controls ────────────────────────────────────────────────────────── */
+.form-row { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:10px; align-items:flex-end; }
+.field { display:flex; flex-direction:column; gap:3px; }
+.field label {
+  font-size:10px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--text-3);
+}
+.field input,.field select,.field textarea {
+  border:1px solid var(--border); border-radius:var(--radius-sm);
+  padding:5px 7px; font:inherit; font-size:13px;
+  background:var(--surface-alt); color:var(--text); transition:border-color .1s;
+}
+.field input:focus,.field select:focus,.field textarea:focus {
+  outline:none; border-color:var(--accent); background:var(--surface);
+}
+.field input[readonly] { opacity:.6; cursor:default; }
+.field.grow { flex:1; min-width:120px; }
+.check-row { display:flex; align-items:center; gap:6px; padding-bottom:6px; cursor:pointer; }
+.check-row input[type=checkbox] { accent-color:var(--accent); width:14px; height:14px; cursor:pointer; }
+
+/* ── Images section ───────────────────────────────────────────────────────── */
+.section-sep { border:none; border-top:1px solid var(--border-soft); margin:14px 0 12px; }
+#add-row { display:flex; gap:8px; align-items:center; margin-top:10px; flex-wrap:wrap; }
+#img-picker {
+  font:inherit; font-size:12px; padding:4px 6px;
+  border:1px solid var(--border); border-radius:var(--radius-sm);
+  background:var(--surface-alt); color:var(--text);
+  flex:1; min-width:200px; max-width:340px;
+  accent-color:var(--accent);
+}
+.form-actions { display:flex; gap:8px; margin-top:14px; }
+
+/* ── Images table ─────────────────────────────────────────────────────────── */
+.tbl-wrap { overflow-x:auto; }
+table.tbl { width:100%; border-collapse:collapse; font-size:12px; }
+table.tbl th {
+  text-align:left; font-size:10px; font-weight:700; letter-spacing:.05em;
+  text-transform:uppercase; color:var(--text-3);
+  padding:3px 5px 6px; border-bottom:1px solid var(--border);
+}
+table.tbl td { padding:5px 4px; vertical-align:middle; border-bottom:1px solid var(--border-soft); }
+table.tbl tr:last-child td { border-bottom:none; }
+table.tbl tr:hover td { background:var(--surface-alt); }
+.thumb-wrap { width:34px; height:26px; display:flex; align-items:center; justify-content:center; }
+.thumb { width:34px; height:26px; object-fit:cover; border-radius:2px; border:1px solid var(--border-soft); display:block; }
+.thumb-ph { width:34px; height:26px; border-radius:2px; border:1px solid var(--border-soft); background:var(--surface-alt); display:flex; align-items:center; justify-content:center; font-size:10px; color:var(--text-3); }
+.src-name { font-family:var(--mono); font-size:11px; color:var(--text-2); max-width:148px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.coord {
+  width:52px; border:1px solid var(--border); border-radius:var(--radius-sm);
+  padding:3px 4px; font-family:var(--mono); font-size:11px;
+  text-align:right; color:var(--text); background:var(--surface-alt);
+  font-variant-numeric:tabular-nums;
+}
+.coord:focus { outline:none; border-color:var(--accent); background:var(--surface); }
+.poster-inp {
+  width:160px; border:1px solid var(--border); border-radius:var(--radius-sm);
+  padding:3px 5px; font-family:var(--mono); font-size:11px;
+  color:var(--text); background:var(--surface-alt);
+}
+.poster-inp:focus { outline:none; border-color:var(--accent); }
+.del-btn { background:none; border:none; color:var(--text-3); cursor:pointer; font-size:16px; line-height:1; padding:0 2px; }
+.del-btn:hover { color:var(--danger); }
+
+/* ── Canvas section ───────────────────────────────────────────────────────── */
+.canvas-head { display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+.canvas-head .card-label { margin-bottom:0; }
+.mode-toggle { display:flex; border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin-left:auto; }
+.mode-toggle button { padding:4px 12px; border:none; background:none; cursor:pointer; font:inherit; font-size:12px; color:var(--text-2); }
+.mode-toggle button.active { background:var(--text); color:var(--surface); }
+#canvas-wrap { overflow:auto; border:1px solid var(--border-soft); border-radius:var(--radius-sm); background:var(--canvas-outer); min-height:80px; max-height:540px; padding:12px; }
+#canvas-inner { position:relative; box-shadow:0 0 0 1px rgba(0,0,0,.18), 0 2px 12px rgba(0,0,0,.15); }
+.ci { position:absolute; cursor:grab; outline:2px solid transparent; border-radius:1px; transition:outline-color .1s; }
+.ci:hover  { outline-color:rgba(35,71,224,.45); }
+.ci.active { outline-color:var(--accent); cursor:grabbing; }
+.ci img    { display:block; width:100%; height:auto; pointer-events:none; }
+.ci-handle {
+  position:absolute; right:-5px; bottom:-5px;
+  width:10px; height:10px; border-radius:50%;
+  background:var(--accent); cursor:se-resize;
+  opacity:0; transition:opacity .1s; pointer-events:auto; z-index:1;
+}
+.ci:hover .ci-handle { opacity:1; }
+.ci.active .ci-handle { opacity:1; }
+.ci-video  { display:flex; align-items:center; justify-content:center; background:var(--border); font-family:var(--mono); font-size:9px; color:var(--text-3); text-align:center; padding:2px; background-size:cover; background-position:center; }
+#canvas-hint { margin-top:6px; font-size:11px; color:var(--text-3); }
+
+/* ── Empty state ──────────────────────────────────────────────────────────── */
+.empty { padding:30px 16px; text-align:center; color:var(--text-3); font-size:13px; }
+</style>
+
+<!-- ── Header ──────────────────────────────────────────────────────────────── -->
+<div id="header">
+  <span id="header-title">Portfolio Admin</span>
+  <span id="folder-name">No folder open</span>
+  <button class="btn" onclick="openFolder()">Open Folder</button>
+  <span id="save-status"></span>
+  <button class="btn btn-primary" id="btn-save" onclick="saveAllFiles()" disabled>Save All</button>
+</div>
+
+<!-- ── Layout ──────────────────────────────────────────────────────────────── -->
+<div id="layout">
+
+  <!-- Sidebar -->
+  <div id="sidebar">
+    <div id="sidebar-head">Projects</div>
+    <div id="project-list"><div class="empty">Open a folder to begin</div></div>
+    <div id="sidebar-footer">
+      <button class="btn" id="btn-new" onclick="newProject()" disabled style="width:100%">+ New Project</button>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div id="main">
+
+    <!-- Form card -->
+    <div class="card" id="form-card">
+      <span class="card-label" id="form-label">Select a project</span>
+      <div id="form-body"><div class="empty">Select a project from the list, or create a new one.</div></div>
+    </div>
+
+    <!-- Canvas card -->
+    <div class="card">
+      <div class="canvas-head">
+        <span class="card-label">Position</span>
+        <div class="mode-toggle">
+          <button id="btn-desktop" class="active" onclick="setMode('desktop')">Desktop</button>
+          <button id="btn-mobile" onclick="setMode('mobile')">Mobile</button>
+        </div>
+      </div>
+      <div id="canvas-wrap"><div id="canvas-inner"></div></div>
+      <div id="canvas-hint">Drag images to reposition. Coordinates sync to the table automatically.</div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ── Constants ──────────────────────────────────────────────────────────────────
+const DESKTOP_W = 4320, DESKTOP_H = 3120;
+const MOBILE_W  = 2200, MOBILE_H  = 3500;
+const MOB_IMG_SCALE = 0.5;   // matches main.js
+const CANVAS_DISPLAY_W = 700; // canvas display width in px
+
+// ── State ──────────────────────────────────────────────────────────────────────
+let rootDir          = null;
+let projectsData     = { items: [] };
+let desktopLayout    = {};
+let mobileLayout     = {};
+let contentData      = { surface_width: 4320, surface_height: 3120, items: [], texts: [] };
+let workImages       = [];
+let imageUrls        = {};   // src → object URL
+let currentProjectId = null;
+let editingProject   = null; // deep copy with _dx/_dy/_dw/_mx/_my/_mw fields
+let currentMode      = 'desktop';
+let canvasEls        = {};   // imgIdx → canvas DOM element
+let _saveTimer       = null;
+
+// ── File System API ────────────────────────────────────────────────────────────
+async function readJson(path) {
+  const parts = path.split('/');
+  let dir = rootDir;
+  for (let i = 0; i < parts.length - 1; i++) dir = await dir.getDirectoryHandle(parts[i]);
+  const fh   = await dir.getFileHandle(parts[parts.length - 1]);
+  const file = await fh.getFile();
+  return JSON.parse(await file.text());
+}
+
+async function writeJson(path, data) {
+  const parts = path.split('/');
+  let dir = rootDir;
+  for (let i = 0; i < parts.length - 1; i++) dir = await dir.getDirectoryHandle(parts[i], { create: true });
+  const fh = await dir.getFileHandle(parts[parts.length - 1], { create: true });
+  const w  = await fh.createWritable();
+  await w.write(JSON.stringify(data, null, 2));
+  await w.close();
+}
+
+async function loadImageUrl(src) {
+  if (imageUrls[src]) return imageUrls[src];
+  try {
+    const parts = src.split('/');
+    let dir = rootDir;
+    for (let i = 0; i < parts.length - 1; i++) dir = await dir.getDirectoryHandle(parts[i]);
+    const fh   = await dir.getFileHandle(parts[parts.length - 1]);
+    const file = await fh.getFile();
+    return imageUrls[src] = URL.createObjectURL(file);
+  } catch { return null; }
+}
+
+// ── Open Folder ────────────────────────────────────────────────────────────────
+async function openFolder() {
+  let step = 'picker';
+  try {
+    // Note: no `id` param — hyphens are invalid in that field and cause NotFoundError in Chrome
+    rootDir = await window.showDirectoryPicker({ mode: 'readwrite' });
+    document.getElementById('folder-name').textContent = rootDir.name;
+
+    step = 'projects.json';
+    const pd = await readJson('projects.json');
+    step = 'layout/desktop.json';
+    const dl = await readJson('layout/desktop.json');
+    step = 'layout/mobile.json';
+    const ml = await readJson('layout/mobile.json');
+    step = 'content.json';
+    const cd = await readJson('content.json');
+
+    projectsData  = pd;
+    desktopLayout = dl;
+    mobileLayout  = ml;
+    contentData   = cd;
+
+    // List WORKimages directory
+    step = 'WORKimages folder';
+    const imgDir = await rootDir.getDirectoryHandle('WORKimages');
+    workImages = [];
+    for await (const entry of imgDir.values()) {
+      if (entry.kind === 'file') workImages.push('WORKimages/' + entry.name);
+    }
+    workImages.sort();
+
+    document.getElementById('btn-new').disabled  = false;
+    document.getElementById('btn-save').disabled = false;
+    renderProjectList();
+    setSaveStatus('');
+  } catch (e) {
+    if (e.name === 'AbortError') return;
+    alert(`Error at step "${step}":\n${e.name}: ${e.message}\n\nMake sure you picked the Helen_web_jpgs folder (not a parent folder), and that Chrome has permission to access it.\n\nOn macOS, if this keeps failing, go to System Settings → Privacy & Security → Files and Folders (or Full Disk Access) and allow Chrome.`);
+  }
+}
+
+// ── Sidebar ────────────────────────────────────────────────────────────────────
+function renderProjectList() {
+  const list = document.getElementById('project-list');
+  list.innerHTML = '';
+  if (!projectsData.items.length) {
+    list.innerHTML = '<div class="empty">No projects yet</div>';
+    return;
+  }
+  for (const p of projectsData.items) {
+    const row = document.createElement('div');
+    row.className = 'proj-row' + (p.id === currentProjectId ? ' active' : '');
+    row.innerHTML = `<span class="proj-id">${esc(p.id)}</span><span class="proj-name">${esc(p.title || '(untitled)')}</span><span class="proj-type">${esc(p.type || '')}</span>`;
+    row.addEventListener('click', () => selectProject(p.id));
+    list.appendChild(row);
+  }
+}
+
+// ── Select existing project ────────────────────────────────────────────────────
+function selectProject(id) {
+  const proj = projectsData.items.find(p => p.id === id);
+  if (!proj) return;
+  currentProjectId = id;
+  editingProject   = JSON.parse(JSON.stringify(proj)); // deep copy
+
+  // Merge layout positions into internal fields
+  for (const img of editingProject.images) {
+    const dp = desktopLayout[img.src] || {};
+    const mp = mobileLayout[img.src]  || {};
+    img._dx = dp.x     ?? 200;
+    img._dy = dp.y     ?? 200;
+    img._dw = dp.width ?? 200;
+    img._mx = mp.mx    ?? 200;
+    img._my = mp.my    ?? 200;
+    img._mw = mp.mw    ?? 300;
+  }
+
+  renderProjectList();
+  renderForm();
+  renderCanvas();
+}
+
+// ── New project ────────────────────────────────────────────────────────────────
+function newProject() {
+  currentProjectId = null;
+  editingProject = {
+    id: '', type: 'project', title: '',
+    year: String(new Date().getFullYear()),
+    images: [], text: '',
+  };
+  renderProjectList();
+  renderForm();
+  renderCanvas();
+}
+
+// ── Form ───────────────────────────────────────────────────────────────────────
+function renderForm() {
+  if (!editingProject) return;
+  const p     = editingProject;
+  const isNew = !currentProjectId;
+  document.getElementById('form-label').textContent = isNew ? 'New Project' : `Editing — ${p.title || p.id}`;
+
+  document.getElementById('form-body').innerHTML = `
+    <div class="form-row">
+      <div class="field" style="width:70px">
+        <label>ID</label>
+        <input id="f-id" type="text" value="${esc(p.id)}" placeholder="019" ${!isNew ? 'readonly' : ''}>
+      </div>
+      <div class="field grow">
+        <label>Title</label>
+        <input id="f-title" type="text" value="${esc(p.title || '')}">
+      </div>
+      <div class="field" style="width:65px">
+        <label>Year</label>
+        <input id="f-year" type="text" value="${esc(String(p.year || ''))}">
+      </div>
+      <div class="field" style="width:92px">
+        <label>Type</label>
+        <select id="f-type">
+          ${['project','loose','found','video'].map(t => `<option${p.type===t?' selected':''}>${t}</option>`).join('')}
+        </select>
+      </div>
+      <label class="check-row">
+        <input type="checkbox" id="f-landing" ${p.landing ? 'checked' : ''}>
+        <span style="font-size:12px">Landing page</span>
+      </label>
+    </div>
+    <div class="form-row">
+      <div class="field grow">
+        <label>Display Text</label>
+        <input id="f-text" type="text" value="${esc(p.text || '')}">
+      </div>
+      <div class="field grow">
+        <label>Link href</label>
+        <input id="f-link" type="text" value="${esc(p.link?.href || '')}" placeholder="https://...">
+      </div>
+    </div>
+
+    <hr class="section-sep">
+    <span class="card-label">Images</span>
+    <div class="tbl-wrap" id="tbl-wrap"></div>
+    <div id="add-row">
+      <select id="img-picker" multiple size="5">
+        ${workImages.map(src => `<option value="${esc(src)}">${esc(src.replace('WORKimages/',''))}</option>`).join('')}
+      </select>
+      <button class="btn" onclick="addImage()">Add selected</button>
+    </div>
+
+    <div class="form-actions">
+      <button class="btn btn-primary" onclick="commitProject()">Save Project</button>
+      ${!isNew ? `<button class="btn btn-danger" onclick="deleteProject()">Delete Project</button>` : ''}
+    </div>
+  `;
+
+  renderImagesTable();
+}
+
+// ── Images table ───────────────────────────────────────────────────────────────
+function renderImagesTable() {
+  const wrap = document.getElementById('tbl-wrap');
+  if (!wrap) return;
+  const imgs = editingProject.images;
+
+  if (!imgs.length) {
+    wrap.innerHTML = '<div style="color:var(--text-3);padding:7px 0;font-size:12px">No images yet.</div>';
+    return;
+  }
+
+  let html = `<table class="tbl">
+    <thead><tr>
+      <th></th><th>File</th>
+      <th title="Desktop x">x</th><th title="Desktop y">y</th><th title="Desktop width">w</th>
+      <th title="Mobile x">mx</th><th title="Mobile y">my</th><th title="Mobile mw (2× rendered width)">mw</th>
+      <th title="Doorway — clicking navigates to project">Door</th>
+      <th>Poster (video)</th>
+      <th></th>
+    </tr></thead><tbody>`;
+
+  imgs.forEach((img, i) => {
+    const fname   = img.src.replace('WORKimages/','');
+    const isVideo = /\.(mp4|mov|webm|ogg)$/i.test(img.src);
+    html += `<tr>
+      <td><div class="thumb-wrap" id="thw-${i}"><div class="thumb-ph">${isVideo ? '▶' : ''}</div></div></td>
+      <td><div class="src-name" title="${esc(img.src)}">${esc(fname)}</div></td>
+      <td><input class="coord" data-i="${i}" data-f="_dx" type="number" value="${img._dx ?? ''}"></td>
+      <td><input class="coord" data-i="${i}" data-f="_dy" type="number" value="${img._dy ?? ''}"></td>
+      <td><input class="coord" data-i="${i}" data-f="_dw" type="number" value="${img._dw ?? ''}"></td>
+      <td><input class="coord" data-i="${i}" data-f="_mx" type="number" value="${img._mx ?? ''}"></td>
+      <td><input class="coord" data-i="${i}" data-f="_my" type="number" value="${img._my ?? ''}"></td>
+      <td><input class="coord" data-i="${i}" data-f="_mw" type="number" value="${img._mw ?? ''}"></td>
+      <td style="text-align:center"><input type="checkbox" data-i="${i}" data-cb="doorway" ${img.doorway ? 'checked' : ''} style="accent-color:var(--accent);width:14px;height:14px"></td>
+      <td>${isVideo
+        ? `<input class="poster-inp" data-i="${i}" data-tf="poster" type="text" value="${esc(img.poster||'')}" placeholder="WORKimages/...">`
+        : '<span style="color:var(--text-3);font-size:11px">—</span>'}</td>
+      <td><button class="del-btn" onclick="removeImage(${i})">×</button></td>
+    </tr>`;
+  });
+
+  html += '</tbody></table>';
+  wrap.innerHTML = html;
+
+  // Load thumbnails asynchronously (keep reference to prevent stale callbacks)
+  imgs.forEach((img, i) => {
+    if (/\.(mp4|mov|webm|ogg)$/i.test(img.src)) return;
+    const cell = document.getElementById(`thw-${i}`);
+    if (!cell) return;
+    loadImageUrl(img.src).then(url => {
+      if (!url || !cell.isConnected) return;
+      const im = document.createElement('img');
+      im.src = url; im.className = 'thumb';
+      cell.innerHTML = '';
+      cell.appendChild(im);
+    });
+  });
+
+  // Coord inputs → sync to data + canvas
+  wrap.querySelectorAll('.coord').forEach(inp => {
+    inp.addEventListener('input', () => {
+      const idx = +inp.dataset.i;
+      const val = parseInt(inp.value, 10);
+      if (!isNaN(val)) {
+        editingProject.images[idx][inp.dataset.f] = val;
+        updateCanvasPosition(idx);
+        queueAutoSave();
+      }
+    });
+  });
+
+  // Checkboxes
+  wrap.querySelectorAll('[data-cb]').forEach(cb => {
+    cb.addEventListener('change', () => {
+      const idx = +cb.dataset.i;
+      if (cb.checked) editingProject.images[idx][cb.dataset.cb] = true;
+      else delete editingProject.images[idx][cb.dataset.cb];
+    });
+  });
+
+  // Poster text inputs
+  wrap.querySelectorAll('[data-tf="poster"]').forEach(inp => {
+    inp.addEventListener('input', () => {
+      const idx = +inp.dataset.i;
+      if (inp.value) editingProject.images[idx].poster = inp.value;
+      else delete editingProject.images[idx].poster;
+    });
+  });
+}
+
+function addImage() {
+  const picker = document.getElementById('img-picker');
+  const selected = Array.from(picker.selectedOptions).map(o => o.value).filter(Boolean);
+  if (!selected.length) return;
+  for (const src of selected) {
+    editingProject.images.push({ src, _dx:300, _dy:300, _dw:200, _mx:300, _my:300, _mw:300 });
+  }
+  for (const o of picker.selectedOptions) o.selected = false;
+  renderImagesTable();
+  renderCanvas();
+}
+
+function removeImage(idx) {
+  editingProject.images.splice(idx, 1);
+  renderImagesTable();
+  renderCanvas();
+}
+
+// ── Canvas ─────────────────────────────────────────────────────────────────────
+function getScale()   { return CANVAS_DISPLAY_W / (currentMode === 'desktop' ? DESKTOP_W : MOBILE_W); }
+function getSurfH()   { return currentMode === 'desktop' ? DESKTOP_H : MOBILE_H; }
+
+function getImgCoords(img) {
+  if (currentMode === 'desktop') return { x: img._dx ?? 0, y: img._dy ?? 0, w: img._dw ?? 100 };
+  return { x: img._mx ?? 0, y: img._my ?? 0, w: Math.round((img._mw ?? 300) * MOB_IMG_SCALE) };
+}
+
+function setMode(m) {
+  currentMode = m;
+  document.getElementById('btn-desktop').classList.toggle('active', m === 'desktop');
+  document.getElementById('btn-mobile').classList.toggle('active',  m === 'mobile');
+  renderCanvas();
+}
+
+async function renderCanvas() {
+  const inner = document.getElementById('canvas-inner');
+  inner.innerHTML = '';
+  canvasEls = {};
+
+  const scale = getScale();
+  inner.style.width  = CANVAS_DISPLAY_W + 'px';
+  inner.style.height = Math.round(getSurfH() * scale) + 'px';
+
+  // ── Background: all other projects dimmed, non-interactive ──────────────────
+  for (const proj of projectsData.items) {
+    if (editingProject && proj.id === editingProject.id) continue;
+    for (const img of proj.images) {
+      const inLayout = currentMode === 'desktop' ? (img.src in desktopLayout) : (img.src in mobileLayout);
+      if (!inLayout) continue;
+      const dp = desktopLayout[img.src] || {};
+      const mp = mobileLayout[img.src]  || {};
+      const x  = currentMode === 'desktop' ? (dp.x     ?? 0) : (mp.mx ?? 0);
+      const y  = currentMode === 'desktop' ? (dp.y     ?? 0) : (mp.my ?? 0);
+      const w  = currentMode === 'desktop' ? (dp.width ?? 80) : Math.round((mp.mw ?? 300) * MOB_IMG_SCALE);
+
+      const isVideo = /\.(mp4|mov|webm|ogg)$/i.test(img.src);
+      const el = document.createElement('div');
+      el.className = 'ci';
+      el.style.cssText = `left:${Math.round(x*scale)}px;top:${Math.round(y*scale)}px;width:${Math.round(w*scale)}px;opacity:.2;pointer-events:none;`;
+
+      if (isVideo) {
+        el.classList.add('ci-video');
+        el.style.height = Math.max(10, Math.round(w * scale * 0.56)) + 'px';
+      } else {
+        const imgEl = document.createElement('img');
+        imgEl.style.cssText = 'display:block;width:100%;height:auto;pointer-events:none;';
+        el.appendChild(imgEl);
+        loadImageUrl(img.src).then(url => { if (url && imgEl.isConnected) imgEl.src = url; });
+      }
+      inner.appendChild(el);
+    }
+  }
+
+  if (!editingProject || !editingProject.images.length) return;
+
+  // ── Foreground: current project images, interactive ─────────────────────────
+  for (let i = 0; i < editingProject.images.length; i++) {
+    const img     = editingProject.images[i];
+    const { x, y, w } = getImgCoords(img);
+    const isVideo = /\.(mp4|mov|webm|ogg)$/i.test(img.src);
+
+    const el = document.createElement('div');
+    el.className   = 'ci';
+    el.dataset.idx = i;
+    el.style.left  = Math.round(x * scale) + 'px';
+    el.style.top   = Math.round(y * scale) + 'px';
+    el.style.width = Math.round(w * scale) + 'px';
+
+    if (isVideo) {
+      el.classList.add('ci-video');
+      el.style.height = Math.max(16, Math.round(w * scale * 0.56)) + 'px';
+      el.textContent  = img.src.replace('WORKimages/', '');
+      if (img.poster) {
+        loadImageUrl(img.poster).then(url => {
+          if (!url || !el.isConnected) return;
+          el.style.backgroundImage = `url(${url})`;
+          el.textContent = '';
+        });
+      }
+    } else {
+      const imgEl = document.createElement('img');
+      imgEl.style.cssText = 'display:block;width:100%;height:auto;pointer-events:none;';
+      imgEl.alt = img.src;
+      el.appendChild(imgEl);
+      loadImageUrl(img.src).then(url => { if (url && imgEl.isConnected) imgEl.src = url; });
+    }
+
+    makeDraggable(el, i);
+    makeResizable(el, i);
+    inner.appendChild(el);
+    canvasEls[i] = el;
+  }
+}
+
+function updateCanvasPosition(idx) {
+  const el = canvasEls[idx];
+  if (!el || !editingProject) return;
+  const img = editingProject.images[idx];
+  const { x, y, w } = getImgCoords(img);
+  const scale = getScale();
+  el.style.left  = Math.round(x * scale) + 'px';
+  el.style.top   = Math.round(y * scale) + 'px';
+  el.style.width = Math.round(w * scale) + 'px';
+  if (el.classList.contains('ci-video')) {
+    el.style.height = Math.max(10, Math.round(w * scale * 0.56)) + 'px';
+  }
+}
+
+function makeResizable(el, imgIdx) {
+  const handle = document.createElement('div');
+  handle.className = 'ci-handle';
+  handle.addEventListener('mousedown', e => {
+    e.preventDefault();
+    e.stopPropagation(); // don't trigger drag
+    const scale   = getScale();
+    const img     = editingProject.images[imgIdx];
+    const startMX = e.clientX;
+    const startW  = currentMode === 'desktop'
+      ? (img._dw ?? 100)
+      : Math.round((img._mw ?? 300) * MOB_IMG_SCALE);
+
+    function onMove(e2) {
+      const newW = Math.max(10, Math.round(startW + (e2.clientX - startMX) / scale));
+      if (currentMode === 'desktop') {
+        img._dw = newW;
+      } else {
+        img._mw = Math.round(newW / MOB_IMG_SCALE); // store as 2× rendered width
+      }
+      el.style.width = Math.round(newW * scale) + 'px';
+      if (el.classList.contains('ci-video')) {
+        el.style.height = Math.max(10, Math.round(newW * scale * 0.56)) + 'px';
+      }
+      syncTableCoords(imgIdx);
+    }
+    function onUp() {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup',   onUp);
+      queueAutoSave();
+    }
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup',   onUp);
+  });
+  el.appendChild(handle);
+}
+
+function makeDraggable(el, imgIdx) {
+  let mx0, my0, ix0, iy0;
+
+  el.addEventListener('mousedown', e => {
+    e.preventDefault();
+    mx0 = e.clientX; my0 = e.clientY;
+    const img = editingProject.images[imgIdx];
+    if (currentMode === 'desktop') { ix0 = img._dx ?? 0; iy0 = img._dy ?? 0; }
+    else                           { ix0 = img._mx ?? 0; iy0 = img._my ?? 0; }
+    el.classList.add('active');
+
+    const scale = getScale();
+    function onMove(e2) {
+      const nx = Math.round(ix0 + (e2.clientX - mx0) / scale);
+      const ny = Math.round(iy0 + (e2.clientY - my0) / scale);
+      const img = editingProject.images[imgIdx];
+      if (currentMode === 'desktop') { img._dx = nx; img._dy = ny; }
+      else                           { img._mx = nx; img._my = ny; }
+      el.style.left = Math.round(nx * scale) + 'px';
+      el.style.top  = Math.round(ny * scale) + 'px';
+      syncTableCoords(imgIdx);
+    }
+    function onUp() {
+      el.classList.remove('active');
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup',   onUp);
+      queueAutoSave();
+    }
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup',   onUp);
+  });
+}
+
+function syncTableCoords(imgIdx) {
+  const img  = editingProject.images[imgIdx];
+  const wrap = document.getElementById('tbl-wrap');
+  if (!wrap) return;
+  for (const inp of wrap.querySelectorAll(`.coord[data-i="${imgIdx}"]`)) {
+    const f = inp.dataset.f;
+    if (f && img[f] !== undefined) inp.value = img[f];
+  }
+}
+
+// ── Save ───────────────────────────────────────────────────────────────────────
+function readFormValues() {
+  const p = editingProject;
+  p.id    = (document.getElementById('f-id')?.value     ?? p.id).trim();
+  p.title = (document.getElementById('f-title')?.value  ?? '').trim();
+  p.year  = (document.getElementById('f-year')?.value   ?? '').trim();
+  p.type  = document.getElementById('f-type')?.value    ?? 'project';
+  p.text  = (document.getElementById('f-text')?.value   ?? '').trim() || null;
+  const lh = (document.getElementById('f-link')?.value  ?? '').trim();
+  if (lh) {
+    const origLink = projectsData.items.find(pr => pr.id === p.id)?.link || {};
+    p.link = { ...origLink, href: lh };
+  } else { delete p.link; }
+  if (document.getElementById('f-landing')?.checked) p.landing = true;
+  else delete p.landing;
+}
+
+async function commitProject() {
+  if (!editingProject) return;
+  readFormValues();
+  if (!editingProject.id)             { alert('Project needs an ID.'); return; }
+  if (!editingProject.images.length)  { alert('Add at least one image.'); return; }
+
+  const record = buildRecord(editingProject);
+  const idx    = projectsData.items.findIndex(p => p.id === record.id);
+  if (idx >= 0) projectsData.items[idx] = record;
+  else          projectsData.items.push(record);
+  currentProjectId = record.id;
+
+  // Update layout dicts
+  for (const img of editingProject.images) {
+    desktopLayout[img.src] = { x: img._dx, y: img._dy, width: img._dw };
+    mobileLayout[img.src]  = { mx: img._mx, my: img._my, mw: img._mw };
+  }
+
+  await saveAllFiles();
+  renderProjectList();
+}
+
+function buildRecord(p) {
+  return {
+    id: p.id, type: p.type, title: p.title, year: p.year,
+    ...(p.landing ? { landing: true } : {}),
+    images: p.images.map(img => {
+      const r = { src: img.src };
+      if (img.doorway) r.doorway = true;
+      if (img.poster)  r.poster  = img.poster;
+      return r;
+    }),
+    text: p.text || null,
+    ...(p.link ? { link: p.link } : {}),
+  };
+}
+
+async function saveAllFiles() {
+  if (!rootDir) return;
+  setSaveStatus('Saving…');
+  try {
+    // Regenerate content.json from projects + layout files
+    const contentItems = projectsData.items.map(item => {
+      const images = item.images.map(img => {
+        const dp = desktopLayout[img.src] || {};
+        const mp = mobileLayout[img.src]  || {};
+        return {
+          src:    img.src,
+          ...(img.doorway ? { doorway: true }  : {}),
+          ...(img.poster  ? { poster: img.poster } : {}),
+          width:  dp.width ?? 0,
+          x:      dp.x     ?? 0,
+          y:      dp.y     ?? 0,
+          mx:     mp.mx    ?? 0,
+          my:     mp.my    ?? 0,
+          mw:     mp.mw    ?? 0,
+        };
+      });
+      return {
+        id: item.id, type: item.type, title: item.title, year: item.year,
+        ...(item.landing ? { landing: true } : {}),
+        images, text: item.text,
+        ...(item.link ? { link: item.link } : {}),
+      };
+    });
+
+    const newContent = {
+      surface_width:  contentData.surface_width,
+      surface_height: contentData.surface_height,
+      items:  contentItems,
+      texts:  contentData.texts,
+    };
+
+    await Promise.all([
+      writeJson('projects.json',       projectsData),
+      writeJson('layout/desktop.json', desktopLayout),
+      writeJson('layout/mobile.json',  mobileLayout),
+      writeJson('content.json',        newContent),
+    ]);
+    contentData = newContent;
+    setSaveStatus('Saved ✓');
+    setTimeout(() => setSaveStatus(''), 2500);
+  } catch (e) {
+    setSaveStatus('Error saving');
+    console.error(e);
+  }
+}
+
+async function deleteProject() {
+  if (!currentProjectId) return;
+  if (!confirm(`Delete "${editingProject.title || currentProjectId}"? This removes it from projects.json and content.json.`)) return;
+  projectsData.items = projectsData.items.filter(p => p.id !== currentProjectId);
+  currentProjectId   = null;
+  editingProject     = null;
+  document.getElementById('form-label').textContent   = 'Select a project';
+  document.getElementById('form-body').innerHTML       = '<div class="empty">Select a project or create a new one.</div>';
+  document.getElementById('canvas-inner').innerHTML   = '';
+  await saveAllFiles();
+  renderProjectList();
+}
+
+// ── Utilities ──────────────────────────────────────────────────────────────────
+function esc(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function setSaveStatus(msg) {
+  document.getElementById('save-status').textContent = msg;
+}
+
+function queueAutoSave() {
+  clearTimeout(_saveTimer);
+  setSaveStatus('Unsaved…');
+  _saveTimer = setTimeout(async () => {
+    if (editingProject && rootDir) await commitProject();
+  }, 900);
+}
+</script>

@@ -1,0 +1,662 @@
+{
+  "surface_width": 4320,
+  "surface_height": 3120,
+  "items": [
+    {
+      "id": "001",
+      "type": "project",
+      "title": "Marlborough Road",
+      "year": "2024",
+      "images": [
+        {
+          "src": "WORKimages/2024_Marlborough_Road_1.jpg",
+          "width": 279,
+          "x": 1061,
+          "y": 188,
+          "mx": 234,
+          "my": 499,
+          "mw": 334
+        },
+        {
+          "src": "WORKimages/2024_Marlborough_Road_2.jpg",
+          "width": 208,
+          "x": 850,
+          "y": 322,
+          "mx": 413,
+          "my": 504,
+          "mw": 290
+        },
+        {
+          "src": "WORKimages/2024_Marlborough_Road_3.jpg",
+          "width": 230,
+          "x": 1490,
+          "y": 261,
+          "mx": 612,
+          "my": 525,
+          "mw": 244
+        },
+        {
+          "src": "WORKimages/2024_Marlborough_Road_4.jpg",
+          "width": 192,
+          "x": 1198,
+          "y": 645,
+          "mx": 403,
+          "my": 732,
+          "mw": 252
+        },
+        {
+          "src": "WORKimages/2024_Marlborough_Road_5.jpg",
+          "width": 168,
+          "x": 1324,
+          "y": 406,
+          "mx": 796,
+          "my": 403,
+          "mw": 234
+        }
+      ],
+      "text": "Marlborough Road, 2024"
+    },
+    {
+      "id": "002",
+      "type": "project",
+      "title": "Jake Zhang",
+      "year": "2026",
+      "images": [
+        {
+          "src": "WORKimages/2026_JakeZhang_1.jpg",
+          "width": 336,
+          "x": 2463,
+          "y": 996,
+          "mx": 837,
+          "my": 1152,
+          "mw": 362
+        },
+        {
+          "src": "WORKimages/2026_JakeZhang_2.jpg",
+          "width": 197,
+          "x": 2630,
+          "y": 839,
+          "mx": 1153,
+          "my": 937,
+          "mw": 232
+        },
+        {
+          "src": "WORKimages/2026_JakeZhang_3.jpg",
+          "width": 89,
+          "x": 2376,
+          "y": 967,
+          "mx": 819,
+          "my": 1018,
+          "mw": 164
+        },
+        {
+          "src": "WORKimages/2026_JakeZhang_4.jpg",
+          "width": 144,
+          "x": 2335,
+          "y": 1028,
+          "mx": 701,
+          "my": 1076,
+          "mw": 276
+        },
+        {
+          "src": "WORKimages/2026_Jake_Zhang_5.jpg",
+          "doorway": true,
+          "width": 210,
+          "x": 1521,
+          "y": 1859,
+          "mx": 1266,
+          "my": 978,
+          "mw": 292
+        },
+        {
+          "src": "WORKimages/2026_Jake_Zhang_6.jpg",
+          "width": 105,
+          "x": 2792,
+          "y": 1080,
+          "mx": 1019,
+          "my": 1088,
+          "mw": 192
+        }
+      ],
+      "text": "Jake Zhang, 2026"
+    },
+    {
+      "id": "003",
+      "type": "loose",
+      "title": "Female Photographer",
+      "year": "2024",
+      "images": [
+        {
+          "src": "WORKimages/2024_Female_Photographer.jpg",
+          "width": 482,
+          "x": 2262,
+          "y": 16,
+          "mx": 1160,
+          "my": 380,
+          "mw": 318
+        }
+      ],
+      "text": null
+    },
+    {
+      "id": "004",
+      "type": "found",
+      "title": "Daiva's Craft",
+      "year": 2024,
+      "images": [
+        {
+          "src": "WORKimages/2024_DaivasCraft_1.jpeg",
+          "width": 659,
+          "x": 3628,
+          "y": 178,
+          "mx": 1522,
+          "my": 150,
+          "mw": 446
+        }
+      ],
+      "text": "Daiva's Craft, 2024"
+    },
+    {
+      "id": "005",
+      "type": "loose",
+      "title": "",
+      "year": "2024",
+      "images": [
+        {
+          "src": "WORKimages/2024_Jack_bed_photo.webp",
+          "width": 224,
+          "x": 4348,
+          "y": 212,
+          "mx": 1896,
+          "my": 396,
+          "mw": 252
+        }
+      ],
+      "text": ""
+    },
+    {
+      "id": "007",
+      "type": "project",
+      "title": "JO",
+      "year": "2025",
+      "images": [
+        {
+          "src": "WORKimages/2025_JO_1.jpg",
+          "width": 90,
+          "x": 5157,
+          "y": 1255,
+          "mx": 205,
+          "my": 2192,
+          "mw": 110
+        },
+        {
+          "src": "WORKimages/2025_JO_2.jpg",
+          "width": 98,
+          "x": 4668,
+          "y": 1223,
+          "mx": 406,
+          "my": 2316,
+          "mw": 130
+        }
+      ],
+      "text": "JO, 2025"
+    },
+    {
+      "id": "008",
+      "type": "loose",
+      "title": "Body Terrace",
+      "year": "2024",
+      "images": [
+        {
+          "src": "WORKimages/2024_Body_Terrace.jpg",
+          "width": 216,
+          "x": 3409,
+          "y": 510,
+          "mx": 1485,
+          "my": 476,
+          "mw": 186
+        }
+      ],
+      "text": null
+    },
+    {
+      "id": "009",
+      "type": "found",
+      "title": "Safety Bag",
+      "year": 2024,
+      "images": [
+        {
+          "src": "WORKimages/2024_Safety_1.jpg",
+          "width": 413,
+          "x": 385,
+          "y": 1964,
+          "mx": 484,
+          "my": 1507,
+          "mw": 310
+        },
+        {
+          "src": "WORKimages/2024_Safety_2.jpg",
+          "width": 135,
+          "x": 429,
+          "y": 1712,
+          "mx": 502,
+          "my": 1452,
+          "mw": 162
+        }
+      ],
+      "text": "Poppy Morgan's Safety Belts, 2024"
+    },
+    {
+      "id": "010",
+      "type": "project",
+      "title": "Fishy",
+      "year": "2024",
+      "images": [
+        {
+          "src": "WORKimages/2024_Fishy_1.jpg",
+          "width": 234,
+          "x": 2587,
+          "y": 1850,
+          "mx": 1178,
+          "my": 1896,
+          "mw": 222
+        },
+        {
+          "src": "WORKimages/2024_Fishy_2.jpg",
+          "width": 148,
+          "x": 2512,
+          "y": 2401,
+          "mx": 1178,
+          "my": 2197,
+          "mw": 166
+        },
+        {
+          "src": "WORKimages/2024_Fishy_3.jpg",
+          "width": 100,
+          "x": 2272,
+          "y": 2831,
+          "mx": 1036,
+          "my": 2096,
+          "mw": 212
+        },
+        {
+          "src": "WORKimages/2024_Fishy_4.jpg",
+          "width": 290,
+          "x": 2296,
+          "y": 2223,
+          "mx": 920,
+          "my": 2074,
+          "mw": 218
+        },
+        {
+          "src": "WORKimages/2024_Fishy_5.jpg",
+          "width": 148,
+          "x": 2140,
+          "y": 2606,
+          "mx": 1116,
+          "my": 2164,
+          "mw": 206
+        }
+      ],
+      "text": "Fishy, 2024"
+    },
+    {
+      "id": "011",
+      "type": "project",
+      "title": "Main Cut",
+      "year": "2023",
+      "images": [
+        {
+          "src": "WORKimages/2023_Main_cut.jpg",
+          "width": 498,
+          "x": 3183,
+          "y": 2921,
+          "mx": 1794,
+          "my": 1537,
+          "mw": 356
+        }
+      ],
+      "text": "Main Cuts, 2023"
+    },
+    {
+      "id": "012",
+      "type": "project",
+      "title": "ScreenShotThis",
+      "year": "2025",
+      "images": [
+        {
+          "src": "WORKimages/2025_ScreenShotThis_1.jpg",
+          "width": 154,
+          "x": 3379,
+          "y": 2022,
+          "mx": 1614,
+          "my": 1370,
+          "mw": 232
+        },
+        {
+          "src": "WORKimages/2025_ScreenShotThis_2.jpg",
+          "doorway": true,
+          "width": 80,
+          "x": 1522,
+          "y": 1579,
+          "mx": 1382,
+          "my": 1468,
+          "mw": 218
+        },
+        {
+          "src": "WORKimages/2025_ScreenShotThis_Gif.gif",
+          "width": 239,
+          "x": 3148,
+          "y": 1821,
+          "mx": 1496,
+          "my": 1303,
+          "mw": 218
+        }
+      ],
+      "text": "Screen Shot This, 2025"
+    },
+    {
+      "id": "013",
+      "type": "project",
+      "title": "Car Nour",
+      "year": "2026",
+      "landing": true,
+      "images": [
+        {
+          "src": "WORKimages/2026_Car_Nour.png",
+          "width": 305,
+          "x": 1849,
+          "y": 1378,
+          "mx": 1024,
+          "my": 1520,
+          "mw": 332
+        }
+      ],
+      "text": "Car Nour, 2026"
+    },
+    {
+      "id": "015",
+      "type": "video",
+      "title": "Chanel Window",
+      "year": "2025",
+      "images": [
+        {
+          "src": "WORKimages/2025_Chanel_window.mp4",
+          "poster": "WORKimages/2025_Chanel_Window.jpeg",
+          "width": 381,
+          "x": 1074,
+          "y": 1281,
+          "mx": 815,
+          "my": 710,
+          "mw": 334
+        }
+      ],
+      "text": "Chanel Window, 2025"
+    },
+    {
+      "id": "016",
+      "type": "video",
+      "title": "Communistagram",
+      "year": "2024",
+      "images": [
+        {
+          "src": "WORKimages/2024_Communistagram.mp4",
+          "poster": "WORKimages/2024_Communistagram.jpeg",
+          "width": 768,
+          "x": 4236,
+          "y": 2264,
+          "mx": 400,
+          "my": 1748,
+          "mw": 668
+        }
+      ],
+      "text": "Communistagram, 2024"
+    },
+    {
+      "id": "017",
+      "type": "video",
+      "title": "Birthlook Reveal",
+      "year": "2025",
+      "images": [
+        {
+          "src": "WORKimages/2025_BirthLookReveal.mp4",
+          "poster": "WORKimages/2025_Birthlook_3.jpeg",
+          "width": 400,
+          "x": 3100,
+          "y": 1259,
+          "mx": 1595,
+          "my": 801,
+          "mw": 556
+        },
+        {
+          "src": "WORKimages/2025_Birthlook_1.jpeg",
+          "width": 308,
+          "x": 3537,
+          "y": 1436,
+          "mx": 1726,
+          "my": 638,
+          "mw": 222
+        },
+        {
+          "src": "WORKimages/2025_Birthlook_2.jpeg",
+          "width": 164,
+          "x": 3498,
+          "y": 1304,
+          "mx": 1837,
+          "my": 1002,
+          "mw": 228
+        },
+        {
+          "src": "WORKimages/2025_Birthlook_3.jpeg",
+          "doorway": true,
+          "width": 128,
+          "x": 1108,
+          "y": 2876,
+          "mx": 1857,
+          "my": 1184,
+          "mw": 178
+        }
+      ],
+      "text": "Birthlook Reveal,2025"
+    },
+    {
+      "id": "018",
+      "type": "project",
+      "title": "Oscar Ouyang SS26 BTS for iD",
+      "year": "2026",
+      "images": [
+        {
+          "src": "WORKimages/2025_Ouyang_ss26_bts_hy-1.jpg",
+          "width": 176,
+          "x": 246,
+          "y": 2856,
+          "mx": 1533,
+          "my": 2242,
+          "mw": 188
+        },
+        {
+          "src": "WORKimages/2025_Ouyang_ss26_bts_hy-2.jpg",
+          "width": 168,
+          "x": 424,
+          "y": 2868,
+          "mx": 1815,
+          "my": 2247,
+          "mw": 176
+        },
+        {
+          "src": "WORKimages/2025_Ouyang_ss26_bts_hy-5.jpg",
+          "width": 144,
+          "x": -1,
+          "y": 2904,
+          "mx": 1762,
+          "my": 2348,
+          "mw": 146
+        }
+      ],
+      "text": "Oscar Ouyang SS26 BTS for i-D, 2025",
+      "link": {
+        "href": "https://i-d.co/article/oscar-ouyang-spring-2026/"
+      }
+    },
+    {
+      "id": "019",
+      "type": "project",
+      "title": "Jake Zhang FAKEBOY Collection",
+      "year": "2026",
+      "images": [
+        {
+          "src": "WORKimages/2026_JZ_Lookbook1.jpeg",
+          "width": 200,
+          "x": 3879,
+          "y": 2423,
+          "mx": 363,
+          "my": 2019,
+          "mw": 300
+        },
+        {
+          "src": "WORKimages/2026_JZ_Lookbook5.jpeg",
+          "width": 95,
+          "x": 4682,
+          "y": 1781,
+          "mx": 184,
+          "my": 2004,
+          "mw": 194
+        },
+        {
+          "src": "WORKimages/2026_JZ_Lookbook8.jpeg",
+          "width": 126,
+          "x": 4262,
+          "y": 2836,
+          "mx": 287,
+          "my": 1963,
+          "mw": 136
+        },
+        {
+          "src": "WORKimages/2026_JZ_Lookbook11.jpeg",
+          "width": 200,
+          "x": 4787,
+          "y": 1849,
+          "mx": 209,
+          "my": 1858,
+          "mw": 130
+        },
+        {
+          "src": "WORKimages/2026_JZ_Lookbook12.jpeg",
+          "width": 200,
+          "x": 3972,
+          "y": 1985,
+          "mx": 712,
+          "my": 1400,
+          "mw": 300
+        },
+        {
+          "src": "WORKimages/2026_JZ_Lookbook14.jpeg",
+          "width": 200,
+          "x": 4182,
+          "y": 1788,
+          "mx": 586,
+          "my": 1218,
+          "mw": 256
+        },
+        {
+          "src": "WORKimages/2026_JZ_Lookbook15.jpeg",
+          "width": 126,
+          "x": 4065,
+          "y": 2768,
+          "mx": 149,
+          "my": 1727,
+          "mw": 168
+        },
+        {
+          "src": "WORKimages/2026_JZ_Lookbook16.jpeg",
+          "width": 200,
+          "x": 3474,
+          "y": 2455,
+          "mx": 469,
+          "my": 1108,
+          "mw": 218
+        },
+        {
+          "src": "WORKimages/2026_JZ_Lookbook22.jpeg",
+          "width": 157,
+          "x": 4331,
+          "y": 1393,
+          "mx": 341,
+          "my": 1105,
+          "mw": 186
+        },
+        {
+          "src": "WORKimages/2026_JZ_Lookbook25.jpeg",
+          "width": 200,
+          "x": 4238,
+          "y": 1029,
+          "mx": 190,
+          "my": 1497,
+          "mw": 300
+        },
+        {
+          "src": "WORKimages/2026_JZ_Lookbook29.jpeg",
+          "width": 200,
+          "x": 4441,
+          "y": 1664,
+          "mx": 177,
+          "my": 1324,
+          "mw": 224
+        },
+        {
+          "src": "WORKimages/2026_JZ_Lookbook30.jpeg",
+          "width": 200,
+          "x": 3657,
+          "y": 2256,
+          "mx": 275,
+          "my": 1214,
+          "mw": 136
+        }
+      ],
+      "text": "Jake Zhang FAKEBOY Collection, 2026"
+    }
+  ],
+  "texts": [
+    {
+      "id": "t001",
+      "lines": [
+        "An iPhone 13 phone size flip book. Flippable both ways.",
+        "Flip content contains: a scroll through 10 self made instagram reels in 5 seconds;",
+        "a future alphabet definition, and many others.",
+        "It's a book you can just flip through, but you can also stop and read every page.",
+        "This is my comment on the speed of consumption of image books these days,",
+        "how it is being reshaped by our interaction with phones.",
+        "Side by side I hope to discuss about reproduction, originality and lineality,",
+        "that exist in these two mediums.",
+        "Together I bring them into this fragile object that gets reshaped and reformed by every single flip.",
+        "Book launch event at Waste Store London, 10th Dec, 2024"
+      ],
+      "maxWidth": 500,
+      "align": "center",
+      "lineHeight": 0.8,
+      "x": 3480,
+      "y": 1941,
+      "mx": 1377,
+      "my": 1670,
+      "style": "small"
+    },
+    {
+      "id": "t004",
+      "lines": [
+        "© 2026.",
+        "You are viewing a surface. What lies beneath it is protected. What you leave on top of it is not.",
+        "Looking is encouraged but not guaranteed. By being here you agree that looking is an act and not all acts are reversible. Scrolling constitutes agreement.",
+        " This site changes. Things move, appear, and disappear. Things might not be where it was."
+      ],
+      "maxWidth": 600,
+      "mMaxWidth": 220,
+      "align": "center",
+      "lineHeight": 0.8,
+      "x": 1130,
+      "y": 2522,
+      "style": "small",
+      "mx": 1452,
+      "my": 2677
+    }
+  ]
+}

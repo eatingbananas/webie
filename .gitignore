@@ -1,0 +1,9 @@
+# macOS
+.DS_Store
+**/.DS_Store
+
+# Large raw video source files (use compressed .mp4 versions instead)
+*.mov
+
+# Claude settings
+.claude/settings.local.json

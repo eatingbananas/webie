@@ -1,0 +1,317 @@
+{
+  "items": [
+    {
+      "id": "001",
+      "type": "project",
+      "title": "Marlborough Road",
+      "year": "2024",
+      "images": [
+        {
+          "src": "WORKimages/2024_Marlborough_Road_1.jpg"
+        },
+        {
+          "src": "WORKimages/2024_Marlborough_Road_2.jpg"
+        },
+        {
+          "src": "WORKimages/2024_Marlborough_Road_3.jpg"
+        },
+        {
+          "src": "WORKimages/2024_Marlborough_Road_4.jpg"
+        },
+        {
+          "src": "WORKimages/2024_Marlborough_Road_5.jpg"
+        }
+      ],
+      "text": "Marlborough Road, 2024"
+    },
+    {
+      "id": "002",
+      "type": "project",
+      "title": "Jake Zhang",
+      "year": "2026",
+      "images": [
+        {
+          "src": "WORKimages/2026_JakeZhang_1.jpg"
+        },
+        {
+          "src": "WORKimages/2026_JakeZhang_2.jpg"
+        },
+        {
+          "src": "WORKimages/2026_JakeZhang_3.jpg"
+        },
+        {
+          "src": "WORKimages/2026_JakeZhang_4.jpg"
+        },
+        {
+          "src": "WORKimages/2026_Jake_Zhang_5.jpg",
+          "doorway": true
+        },
+        {
+          "src": "WORKimages/2026_Jake_Zhang_6.jpg"
+        }
+      ],
+      "text": "Jake Zhang, 2026"
+    },
+    {
+      "id": "003",
+      "type": "loose",
+      "title": "Female Photographer",
+      "year": "2024",
+      "images": [
+        {
+          "src": "WORKimages/2024_Female_Photographer.jpg"
+        }
+      ],
+      "text": null
+    },
+    {
+      "id": "004",
+      "type": "found",
+      "title": "Daiva's Craft",
+      "year": 2024,
+      "images": [
+        {
+          "src": "WORKimages/2024_DaivasCraft_1.jpeg"
+        }
+      ],
+      "text": "Daiva's Craft, 2024"
+    },
+    {
+      "id": "005",
+      "type": "loose",
+      "title": "",
+      "year": "2024",
+      "images": [
+        {
+          "src": "WORKimages/2024_Jack_bed_photo.webp"
+        }
+      ],
+      "text": ""
+    },
+    {
+      "id": "007",
+      "type": "project",
+      "title": "JO",
+      "year": "2025",
+      "images": [
+        {
+          "src": "WORKimages/2025_JO_1.jpg"
+        },
+        {
+          "src": "WORKimages/2025_JO_2.jpg"
+        }
+      ],
+      "text": "JO, 2025"
+    },
+    {
+      "id": "008",
+      "type": "loose",
+      "title": "Body Terrace",
+      "year": "2024",
+      "images": [
+        {
+          "src": "WORKimages/2024_Body_Terrace.jpg"
+        }
+      ],
+      "text": null
+    },
+    {
+      "id": "009",
+      "type": "found",
+      "title": "Safety Bag",
+      "year": 2024,
+      "images": [
+        {
+          "src": "WORKimages/2024_Safety_1.jpg"
+        },
+        {
+          "src": "WORKimages/2024_Safety_2.jpg"
+        }
+      ],
+      "text": "Poppy Morgan's Safety Belts, 2024"
+    },
+    {
+      "id": "010",
+      "type": "project",
+      "title": "Fishy",
+      "year": "2024",
+      "images": [
+        {
+          "src": "WORKimages/2024_Fishy_1.jpg"
+        },
+        {
+          "src": "WORKimages/2024_Fishy_2.jpg"
+        },
+        {
+          "src": "WORKimages/2024_Fishy_3.jpg"
+        },
+        {
+          "src": "WORKimages/2024_Fishy_4.jpg"
+        },
+        {
+          "src": "WORKimages/2024_Fishy_5.jpg"
+        }
+      ],
+      "text": "Fishy, 2024"
+    },
+    {
+      "id": "011",
+      "type": "project",
+      "title": "Main Cut",
+      "year": "2023",
+      "images": [
+        {
+          "src": "WORKimages/2023_Main_cut.jpg"
+        }
+      ],
+      "text": "Main Cuts, 2023"
+    },
+    {
+      "id": "012",
+      "type": "project",
+      "title": "ScreenShotThis",
+      "year": "2025",
+      "images": [
+        {
+          "src": "WORKimages/2025_ScreenShotThis_1.jpg"
+        },
+        {
+          "src": "WORKimages/2025_ScreenShotThis_2.jpg",
+          "doorway": true
+        },
+        {
+          "src": "WORKimages/2025_ScreenShotThis_Gif.gif"
+        }
+      ],
+      "text": "Screen Shot This, 2025"
+    },
+    {
+      "id": "013",
+      "type": "project",
+      "title": "Car Nour",
+      "year": "2026",
+      "landing": true,
+      "images": [
+        {
+          "src": "WORKimages/2026_Car_Nour.png"
+        }
+      ],
+      "text": "Car Nour, 2026"
+    },
+    {
+      "id": "015",
+      "type": "video",
+      "title": "Chanel Window",
+      "year": "2025",
+      "images": [
+        {
+          "src": "WORKimages/2025_Chanel_window.mp4",
+          "poster": "WORKimages/2025_Chanel_Window.jpeg"
+        }
+      ],
+      "text": "Chanel Window, 2025"
+    },
+    {
+      "id": "016",
+      "type": "video",
+      "title": "Communistagram",
+      "year": "2024",
+      "images": [
+        {
+          "src": "WORKimages/2024_Communistagram.mp4",
+          "poster": "WORKimages/2024_Communistagram.jpeg"
+        }
+      ],
+      "text": "Communistagram, 2024"
+    },
+    {
+      "id": "017",
+      "type": "video",
+      "title": "Birthlook Reveal",
+      "year": "2025",
+      "images": [
+        {
+          "src": "WORKimages/2025_BirthLookReveal.mp4",
+          "poster": "WORKimages/2025_Birthlook_3.jpeg"
+        },
+        {
+          "src": "WORKimages/2025_Birthlook_1.jpeg"
+        },
+        {
+          "src": "WORKimages/2025_Birthlook_2.jpeg"
+        },
+        {
+          "src": "WORKimages/2025_Birthlook_3.jpeg",
+          "doorway": true
+        }
+      ],
+      "text": "Birthlook Reveal,2025"
+    },
+    {
+      "id": "018",
+      "type": "project",
+      "title": "Oscar Ouyang SS26 BTS for iD",
+      "year": "2026",
+      "images": [
+        {
+          "src": "WORKimages/2025_Ouyang_ss26_bts_hy-1.jpg"
+        },
+        {
+          "src": "WORKimages/2025_Ouyang_ss26_bts_hy-2.jpg"
+        },
+        {
+          "src": "WORKimages/2025_Ouyang_ss26_bts_hy-5.jpg"
+        }
+      ],
+      "text": "Oscar Ouyang SS26 BTS for i-D, 2025",
+      "link": {
+        "href": "https://i-d.co/article/oscar-ouyang-spring-2026/"
+      }
+    },
+    {
+      "id": "019",
+      "type": "project",
+      "title": "Jake Zhang FAKEBOY Collection",
+      "year": "2026",
+      "images": [
+        {
+          "src": "WORKimages/2026_JZ_Lookbook1.jpeg"
+        },
+        {
+          "src": "WORKimages/2026_JZ_Lookbook5.jpeg"
+        },
+        {
+          "src": "WORKimages/2026_JZ_Lookbook8.jpeg"
+        },
+        {
+          "src": "WORKimages/2026_JZ_Lookbook11.jpeg"
+        },
+        {
+          "src": "WORKimages/2026_JZ_Lookbook12.jpeg"
+        },
+        {
+          "src": "WORKimages/2026_JZ_Lookbook14.jpeg"
+        },
+        {
+          "src": "WORKimages/2026_JZ_Lookbook15.jpeg"
+        },
+        {
+          "src": "WORKimages/2026_JZ_Lookbook16.jpeg"
+        },
+        {
+          "src": "WORKimages/2026_JZ_Lookbook22.jpeg"
+        },
+        {
+          "src": "WORKimages/2026_JZ_Lookbook25.jpeg"
+        },
+        {
+          "src": "WORKimages/2026_JZ_Lookbook29.jpeg"
+        },
+        {
+          "src": "WORKimages/2026_JZ_Lookbook30.jpeg"
+        }
+      ],
+      "text": "Jake Zhang FAKEBOY Collection, 2026"
+    }
+  ]
+}
